@@ -2,14 +2,14 @@
 
 # ⚔️ TopDown Action RPG
 
-### *A Zenless Zone Zero-inspired 2D Real-Time Combat Game*
+### *2D Top-Down Real-Time Action RPG*
 
 ![Unity](https://img.shields.io/badge/Unity-2022+-black?logo=unity&logoColor=white)
 ![C#](https://img.shields.io/badge/C%23-239120?logo=c-sharp&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-In%20Development-orange)
 ![Progress](https://img.shields.io/badge/Overall%20Progress-30%25-blue)
 
-> **Goal:** Real-time physics-driven top-down action RPG with fluid combat, dodge mechanics, and responsive input — inspired by Zenless Zone Zero.
+> **Goal:** Real-time physics-driven top-down action RPG with fluid combat, dodge mechanics, and responsive input.
 
 </div>
 
@@ -335,8 +335,21 @@ Assets/
 
 ---
 
+## 🎨 Credits & Assets
+
+> Add credits here as you integrate third-party assets into the project.
+
+| Asset | Author / Source | License | Usage |
+|---|---|---|---|
+| *(Skull Knight sprite)* | *(add source)* | *(add license)* | Player character |
+| *(Floor tileset)* | *(add source)* | *(add license)* | Environment floor tiles |
+| *(Nature tileset)* | *(add source)* | *(add license)* | Environment props / nature tiles |
+| *(add asset)* | *(add source)* | *(add license)* | *(add usage)* |
+
+---
+
 <div align="center">
 
-*Built with ❤️ in Unity — inspired by Zenless Zone Zero*
+*Built with ❤️ in Unity*
 
 </div>
