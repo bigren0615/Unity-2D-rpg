@@ -784,6 +784,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   spriteRenderer: {fileID: 1098726798}
+  dashSpeed: 12
+  dashDuration: 0.15
+  dashCooldown: 0.5
+  dashEffectPrefab: {fileID: 334256193741341976, guid: a2d9988b78d3d0b49a7b59adf12df5b4, type: 3}
 --- !u!50 &1098726797
 Rigidbody2D:
   serializedVersion: 4

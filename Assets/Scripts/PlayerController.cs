@@ -17,6 +17,9 @@ public class PlayerController : MonoBehaviour
     private float lastDashTime = -Mathf.Infinity;
     private Vector2 lastMoveDir = Vector2.down;
 
+    [Header("Dash Effects")]
+    public GameObject dashEffectPrefab;
+
     private Vector2 movementInput;
     private Rigidbody2D rb;
     private Animator animator;
@@ -98,19 +101,47 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // 4️ Dash coroutine
+    // 4️ Dash coroutine with trailing effect
     private IEnumerator Dash()
     {
         isDashing = true;
         lastDashTime = Time.time;
 
         // Dash direction = current input
-        Vector2 dashDirection = movementInput;
-
         // Use last movement direction if input is zero
-        if (dashDirection == Vector2.zero)
-            dashDirection = lastMoveDir;
+        Vector2 dashDirection = movementInput != Vector2.zero ? movementInput : lastMoveDir;
 
+        // ---- SPAWN DASH EFFECT ----
+        if (dashEffectPrefab != null)
+        {
+            // Instantiate as child so it follows player
+            GameObject dashVFX = Instantiate(dashEffectPrefab, transform.position, Quaternion.identity, transform);
+
+            // Offset behind player based on dash direction
+            Vector3 offset = -(Vector3)dashDirection * 2f;
+            dashVFX.transform.localPosition = offset;
+
+            // Rotate/flip effect to match dash direction (optional, for directional effects)
+            float angle = Mathf.Atan2(dashDirection.y, dashDirection.x) * Mathf.Rad2Deg;
+            dashVFX.transform.rotation = Quaternion.Euler(0, 0, angle);
+
+            // Play animation from first frame
+            Animator vfxAnim = dashVFX.GetComponent<Animator>();
+            if (vfxAnim != null)
+            {
+                vfxAnim.Play(vfxAnim.runtimeAnimatorController.animationClips[0].name, 0, 0f);
+
+                // Destroy after animation length
+                float clipLength = vfxAnim.runtimeAnimatorController.animationClips[0].length;
+                Destroy(dashVFX, clipLength);
+            }
+            else
+            {
+                Destroy(dashVFX, 1f); // fallback
+            }
+        }
+
+        // ---- DASH MOVEMENT ----
         float startTime = Time.time;
 
         while (Time.time < startTime + dashDuration)
