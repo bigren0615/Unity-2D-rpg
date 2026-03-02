@@ -22,7 +22,21 @@ public class PlayerController : MonoBehaviour
 
     [Header("Audio")]
     public AudioClip dashSFX;       // assign your MP3 here in Inspector
+    public AudioClip[] footstepClips;
+
+    public float footstepInterval = 0.8f; // time between steps
+    private int lastFootstepIndex = -1;
+    private float footstepTimer;
+
     private AudioSource audioSource; // will grab AudioSource component
+
+    [Header("Ground Check")]
+    public Transform groundCheck;
+    public float groundCheckRadius = 0.15f;
+    public LayerMask groundLayer;
+
+    private bool isOnGrass;
+    private Vector2 lastPosition;
 
     private Vector2 movementInput;
     private Rigidbody2D rb;
@@ -56,6 +70,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        HandleFootsteps();
         ReadInput();
         UpdateAnimation();
     }
@@ -165,5 +180,74 @@ public class PlayerController : MonoBehaviour
         }
 
         isDashing = false;
+    }
+
+    // 5️ Footstep sounds based on movement and timing
+    private void HandleFootsteps()
+    {
+        // Do not play footsteps while dashing
+        if (isDashing)
+        {
+            footstepTimer = 0f;
+            return;
+        }
+
+        if (!isOnGrass)
+        {
+            footstepTimer = 0f;
+            return;
+        }
+
+        float moved = Vector2.Distance(rb.position, lastPosition);
+        lastPosition = rb.position;
+
+        // Only play when moving
+        if (movementInput != Vector2.zero)
+        {
+            footstepTimer += Time.deltaTime;
+
+            if (footstepTimer >= footstepInterval)
+            {
+                PlayFootstep();
+                footstepTimer = 0f;
+            }
+        }
+        else
+        {
+            footstepTimer = 0f; // reset when idle
+        }
+    }
+
+    private void PlayFootstep()
+    {
+        if (footstepClips == null || footstepClips.Length == 0) return;
+
+        int index;
+        do
+        {
+            index = Random.Range(0, footstepClips.Length);
+        } while (index == lastFootstepIndex && footstepClips.Length > 1);
+
+        lastFootstepIndex = index;
+
+        audioSource.pitch = Random.Range(0.95f, 1.05f);
+        audioSource.PlayOneShot(footstepClips[index], 0.6f);
+        audioSource.pitch = 1f;
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (other.CompareTag("Grass"))
+        {
+            isOnGrass = true;
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (other.CompareTag("Grass"))
+        {
+            isOnGrass = false;
+        }
     }
 }
