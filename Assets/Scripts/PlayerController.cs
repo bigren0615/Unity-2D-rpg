@@ -7,6 +7,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 5f;
+    public SpriteRenderer spriteRenderer;
 
     private Vector2 movementInput;
     private Rigidbody2D rb;
@@ -16,6 +17,13 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+
+        // Automatically fetch SpriteRenderer if not assigned
+        if (spriteRenderer == null)
+            spriteRenderer = GetComponent<SpriteRenderer>();
+
+        if (spriteRenderer == null)
+            Debug.LogError("SpriteRenderer not found on Player! Please add one.");
     }
 
     private void Update()
@@ -37,6 +45,10 @@ public class PlayerController : MonoBehaviour
 
         // Normalize so diagonal is not faster
         movementInput = movementInput.normalized;
+
+        // Base sprite faces LEFT; flipX when moving right
+        if (movementInput.x > 0) spriteRenderer.flipX = true;
+        else if (movementInput.x < 0) spriteRenderer.flipX = false;
     }
 
     // 2️ Physics-based movement
@@ -56,7 +68,7 @@ public class PlayerController : MonoBehaviour
 
         if (isMoving)
         {
-            animator.SetFloat("moveX", movementInput.x);
+            animator.SetFloat("moveX", Mathf.Abs(movementInput.x));
             animator.SetFloat("moveY", movementInput.y);
         }
     }
