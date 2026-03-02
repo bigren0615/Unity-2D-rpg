@@ -20,6 +20,10 @@ public class PlayerController : MonoBehaviour
     [Header("Dash Effects")]
     public GameObject dashEffectPrefab;
 
+    [Header("Audio")]
+    public AudioClip dashSFX;       // assign your MP3 here in Inspector
+    private AudioSource audioSource; // will grab AudioSource component
+
     private Vector2 movementInput;
     private Rigidbody2D rb;
     private Animator animator;
@@ -28,6 +32,10 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+        audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+            Debug.LogError("AudioSource missing on Player!");
 
         // Automatically fetch SpriteRenderer if not assigned
         if (spriteRenderer == null)
@@ -139,6 +147,12 @@ public class PlayerController : MonoBehaviour
             {
                 Destroy(dashVFX, 1f); // fallback
             }
+        }
+
+        // ---- PLAY DASH SOUND ----
+        if (dashSFX != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(dashSFX);
         }
 
         // ---- DASH MOVEMENT ----
