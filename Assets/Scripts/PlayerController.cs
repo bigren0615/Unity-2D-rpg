@@ -17,6 +17,13 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+
+        // Automatically fetch SpriteRenderer if not assigned
+        if (spriteRenderer == null)
+            spriteRenderer = GetComponent<SpriteRenderer>();
+
+        if (spriteRenderer == null)
+            Debug.LogError("SpriteRenderer not found on Player! Please add one.");
     }
 
     private void Update()
@@ -39,7 +46,7 @@ public class PlayerController : MonoBehaviour
         // Normalize so diagonal is not faster
         movementInput = movementInput.normalized;
 
-        // Flip sprite for right / left
+        // Base sprite faces LEFT; flipX when moving right
         if (movementInput.x > 0) spriteRenderer.flipX = true;
         else if (movementInput.x < 0) spriteRenderer.flipX = false;
     }
