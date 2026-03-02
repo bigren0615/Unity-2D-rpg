@@ -7,6 +7,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 5f;
+    public SpriteRenderer spriteRenderer;
 
     private Vector2 movementInput;
     private Rigidbody2D rb;
@@ -37,6 +38,10 @@ public class PlayerController : MonoBehaviour
 
         // Normalize so diagonal is not faster
         movementInput = movementInput.normalized;
+
+        // Flip sprite for right / left
+        if (movementInput.x > 0) spriteRenderer.flipX = true;
+        else if (movementInput.x < 0) spriteRenderer.flipX = false;
     }
 
     // 2️ Physics-based movement
