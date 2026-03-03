@@ -30,20 +30,14 @@ public class PlayerController : MonoBehaviour
 
     private AudioSource audioSource; // will grab AudioSource component
 
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float groundCheckRadius = 0.15f;
-    public LayerMask groundLayer;
-
+    //Ground detection
     private bool isOnGrass;
     private Vector2 lastPosition;
 
     [Header("Attack")]
     public float attackCooldown = 0.25f;
     private float lastAttackTime = -Mathf.Infinity;
-    private bool isAttacking = false;
     private bool facingLocked = false;
-    private bool attackFacingRight;
     private Vector2 attackDir;
 
     private Vector2 movementInput;
@@ -111,18 +105,13 @@ public class PlayerController : MonoBehaviour
         movementInput = movementInput.normalized;
 
         // Update lastMoveDir only when input is not zero
-        if (!isAttacking && movementInput != Vector2.zero)
+        if (!facingLocked && movementInput != Vector2.zero)
         {
             lastMoveDir = movementInput;
         }
 
         // Base sprite faces LEFT; flipX when moving right
-        if (facingLocked)
-        {
-            // Force stored facing direction
-            spriteRenderer.flipX = attackFacingRight;
-        }
-        else
+        if (!facingLocked)
         {
             if (movementInput.x > 0)
                 spriteRenderer.flipX = true;
@@ -146,7 +135,7 @@ public class PlayerController : MonoBehaviour
 
         animator.SetBool("isMoving", isMoving);
 
-        if (isAttacking)
+        if (facingLocked)
         {
             animator.SetFloat("moveX", Mathf.Abs(attackDir.x));
             animator.SetFloat("moveY", attackDir.y);
@@ -226,11 +215,7 @@ public class PlayerController : MonoBehaviour
     // Called by animation event at the start of the attack animation
     public void AttackStart()
     {
-        isAttacking = true;
         facingLocked = true;
-
-        // Store facing direction ONCE
-        attackFacingRight = spriteRenderer.flipX;
 
         // Store FULL attack direction (up/down/left/right)
         attackDir = lastMoveDir;
@@ -238,7 +223,6 @@ public class PlayerController : MonoBehaviour
 
     public void AttackEnd()
     {
-        isAttacking = false;
         facingLocked = false;
     }
 
