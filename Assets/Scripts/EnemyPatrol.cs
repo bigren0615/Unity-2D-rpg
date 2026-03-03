@@ -24,8 +24,24 @@ public class EnemyPatrol : MonoBehaviour
     public float stuckThreshold = 0.1f; // Distance threshold to detect if stuck
     public float stuckTimeLimit = 1.5f; // Time before considering enemy stuck
 
+    [Header("Enemy Separation")]
+    public float separationDistance = 0.8f; // Minimum distance to keep from other enemies
+    public float separationForce = 1.5f; // How strongly to push away from other enemies
+    public LayerMask enemyLayer; // Layer mask for detecting other enemies
+
     [Header("References")]
     public GameObject player; // Assign manually or leave blank to auto-find by tag
+
+    [Header("Health")]
+    public float maxHealth = 100f;
+    private float currentHealth;
+
+    [Header("Visual Effects")]
+    public Color damageFlashColor = Color.red; // Color to flash when taking damage
+    public float flashDuration = 0.1f; // How long each flash lasts
+    public int flashCount = 2; // Number of times to flash
+    private Color originalColor; // Store the original sprite color
+    private bool isFlashing = false; // Prevent overlapping flash effects
 
     private Vector3 startPosition;
     private Vector3 targetPoint;
@@ -53,17 +69,17 @@ public class EnemyPatrol : MonoBehaviour
     private float stuckTimer = 0f;
     private Vector2 avoidanceDirection = Vector2.zero; // Current avoidance direction
 
-    // Music state tracking
-    private bool isBattleMusicPlaying = false;
-    private bool hasPlayedSpottedSound = false;
-    private float battleMusicDelay = 0f;
-    private const float BATTLE_MUSIC_DELAY_TIME = 1.0f; // Delay after suspense sound
+    // Combat state tracking
+    private bool isInCombat = false;
+    private bool isDead = false; // Flag to prevent actions after death
 
     // Bubble tracking
+    private bool hasPlayedSpottedSound = false;
     private bool hasPlayedQuestionBubble = false;
 
     void Start()
     {
+        currentHealth = maxHealth; // Initialize health
         startPosition = transform.position;
         lastPosition = transform.position;
         PickRandomPoint(startPosition, patrolRadius);
@@ -74,6 +90,9 @@ public class EnemyPatrol : MonoBehaviour
         
         if (spriteRenderer == null)
             Debug.LogError("Enemy needs a SpriteRenderer!");
+        else
+            originalColor = spriteRenderer.color; // Store original color
+        
         if (bubbleController == null)
             Debug.LogWarning("BubbleController component not found on " + gameObject.name + ". Bubbles will not appear.");
 
@@ -88,6 +107,9 @@ public class EnemyPatrol : MonoBehaviour
 
     void Update()
     {
+        // Don't do anything if dead
+        if (isDead) return;
+
         // Try to find player again if lost reference
         if (player == null)
         {
@@ -120,7 +142,6 @@ public class EnemyPatrol : MonoBehaviour
                 {
                     AudioManager.Instance.PlaySFX(SFXType.Suspense);
                     hasPlayedSpottedSound = true;
-                    battleMusicDelay = BATTLE_MUSIC_DELAY_TIME;
                     
                     // Show suspense bubble above enemy's head
                     if (bubbleController != null)
@@ -180,34 +201,25 @@ public class EnemyPatrol : MonoBehaviour
         {
             ChasePlayer();
 
-            // Start battle music when chasing (after delay for suspense sound)
-            if (!isBattleMusicPlaying)
+            // Enter combat state when chasing
+            if (!isInCombat)
             {
-                if (battleMusicDelay > 0f)
-                {
-                    battleMusicDelay -= Time.deltaTime;
-                }
-                else
-                {
-                    AudioManager.Instance.CrossfadeMusic(MusicType.BattleBGM1, 0.5f);
-                    isBattleMusicPlaying = true;
-                }
+                EnterCombat();
             }
         }
         else if (isSearching)
         {
             SearchForPlayer();
-            // Keep battle music during search
+            // Stay in combat during search
         }
         else
         {
             Patrol();
 
-            // Return to ambient music when back to normal patrol
-            if (isBattleMusicPlaying)
+            // Exit combat when back to normal patrol
+            if (isInCombat)
             {
-                AudioManager.Instance.CrossfadeMusic(MusicType.AmbientBGM, 0.5f);
-                isBattleMusicPlaying = false;
+                ExitCombat();
             }
             
             // Reset bubble flags when back to patrol
@@ -339,6 +351,10 @@ public class EnemyPatrol : MonoBehaviour
             return;
         }
 
+        // Apply enemy separation to prevent stacking
+        Vector2 separationVector = GetSeparationVector();
+        finalDirection = (finalDirection + separationVector).normalized;
+
         // Apply movement
         Vector3 movement = new Vector3(finalDirection.x, finalDirection.y, 0f) * speed * Time.deltaTime;
         transform.position += movement;
@@ -428,6 +444,46 @@ public class EnemyPatrol : MonoBehaviour
             }
         }
         return true; // Path clear
+    }
+
+    // ---------------- Enemy Separation ----------------
+    private Vector2 GetSeparationVector()
+    {
+        // Find all nearby enemies
+        Collider2D[] nearbyEnemies = Physics2D.OverlapCircleAll(transform.position, separationDistance, enemyLayer);
+        
+        Vector2 separationVector = Vector2.zero;
+        int separationCount = 0;
+
+        foreach (Collider2D enemyCollider in nearbyEnemies)
+        {
+            // Skip self
+            if (enemyCollider.gameObject == gameObject)
+                continue;
+
+            // Calculate direction away from this enemy
+            Vector2 enemyPos = new Vector2(enemyCollider.transform.position.x, enemyCollider.transform.position.y);
+            Vector2 myPos = new Vector2(transform.position.x, transform.position.y);
+            Vector2 awayFromEnemy = myPos - enemyPos;
+            float distance = awayFromEnemy.magnitude;
+
+            // Only apply separation if within separation distance
+            if (distance < separationDistance && distance > 0.01f)
+            {
+                // The closer they are, the stronger the push
+                float strength = (separationDistance - distance) / separationDistance;
+                separationVector += awayFromEnemy.normalized * strength;
+                separationCount++;
+            }
+        }
+
+        // Average and apply separation force multiplier
+        if (separationCount > 0)
+        {
+            separationVector = (separationVector / separationCount) * separationForce;
+        }
+
+        return separationVector;
     }
 
     private Vector2 RotateVector(Vector2 vec, float degrees)
@@ -627,6 +683,10 @@ public class EnemyPatrol : MonoBehaviour
                 Gizmos.DrawLine(transform.position, player.transform.position);
             }
         }
+
+        // Draw enemy separation radius
+        Gizmos.color = new Color(0f, 1f, 1f, 0.2f); // Cyan, semi-transparent
+        Gizmos.DrawWireSphere(transform.position, separationDistance);
     }
 
     private void DrawFieldOfViewCone()
@@ -661,5 +721,145 @@ public class EnemyPatrol : MonoBehaviour
         Vector3 rightEdge = Quaternion.Euler(0, 0, halfAngle) * facingDir3D * chaseRadius;
         Gizmos.DrawLine(enemyPos, enemyPos + leftEdge);
         Gizmos.DrawLine(enemyPos, enemyPos + rightEdge);
+    }
+
+    // Called when enemy takes damage
+    public void TakeDamage(float damage)
+    {
+        // Don't take damage if already dead
+        if (isDead) return;
+
+        currentHealth -= damage;
+        Debug.Log(gameObject.name + " took " + damage + " damage! Current HP: " + currentHealth + "/" + maxHealth);
+
+        // Flash red to show damage
+        if (!isFlashing)
+        {
+            StartCoroutine(DamageFlash());
+        }
+
+        // Enter combat when hit
+        if (!isInCombat)
+        {
+            EnterCombat();
+        }
+
+        if (currentHealth <= 0)
+        {
+            currentHealth = 0;
+            Die();
+        }
+    }
+
+    // Flash the sprite red when taking damage
+    private IEnumerator DamageFlash()
+    {
+        isFlashing = true;
+
+        // Flash multiple times
+        for (int i = 0; i < flashCount; i++)
+        {
+            // Change to damage flash color
+            if (spriteRenderer != null)
+                spriteRenderer.color = damageFlashColor;
+
+            yield return new WaitForSeconds(flashDuration);
+
+            // Return to original color
+            if (spriteRenderer != null)
+                spriteRenderer.color = originalColor;
+
+            yield return new WaitForSeconds(flashDuration);
+        }
+
+        isFlashing = false;
+    }
+
+    private void Die()
+    {
+        if (isDead) return; // Prevent multiple calls
+        isDead = true;
+
+        Debug.Log(gameObject.name + " has died!");
+        
+        // Exit combat when dying
+        if (isInCombat)
+        {
+            ExitCombat();
+        }
+
+        // Disable AI movement
+        speed = 0f;
+
+        // Disable colliders so player can't hit the corpse
+        Collider2D[] colliders = GetComponents<Collider2D>();
+        foreach (Collider2D col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        // Play death animation based on current facing direction
+        if (animator != null)
+        {
+            animator.SetTrigger("Dead");
+            
+            // Set movement parameters to maintain facing direction
+            animator.SetFloat("moveX", Mathf.Abs(facingDirection.x));
+            animator.SetFloat("moveY", facingDirection.y);
+
+            // Get the death animation length and destroy after it finishes
+            StartCoroutine(DestroyAfterAnimation());
+        }
+        else
+        {
+            // Fallback if no animator
+            Destroy(gameObject, 1f);
+        }
+    }
+
+    private IEnumerator DestroyAfterAnimation()
+    {
+        // Wait for the death animation to finish
+        // The animation will play based on the current moveX/moveY parameters
+        yield return new WaitForSeconds(0.1f); // Small delay to ensure animation starts
+
+        // Get current animation state info
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        
+        // Wait for the current animation to finish
+        float animationLength = stateInfo.length;
+        yield return new WaitForSeconds(animationLength);
+
+        // Destroy the game object
+        Destroy(gameObject);
+    }
+
+    // Enter combat state
+    private void EnterCombat()
+    {
+        isInCombat = true;
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.EnterCombat(this);
+        }
+    }
+
+    // Exit combat state
+    private void ExitCombat()
+    {
+        isInCombat = false;
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.ExitCombat(this);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // Make sure to exit combat when destroyed
+        if (isInCombat && GameManager.Instance != null)
+        {
+            GameManager.Instance.ExitCombat(this);
+        }
     }
 }

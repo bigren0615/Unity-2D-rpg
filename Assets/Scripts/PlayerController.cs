@@ -27,6 +27,7 @@ public class PlayerController : MonoBehaviour
     // Enum arrays for footstep sound names (type-safe)
     private SFXType[] grassFootsteps = { SFXType.FootstepGrass1, SFXType.FootstepGrass2, SFXType.FootstepGrass3 };
     private SFXType[] attackSwooshs = { SFXType.AttackSwoosh1, SFXType.AttackSwoosh2, SFXType.AttackSwoosh3 };
+    private SFXType[] attackSlashes = { SFXType.Slash1, SFXType.Slash2, SFXType.Slash3 };
 
     //Ground detection
     private bool isOnGrass;
@@ -34,9 +35,15 @@ public class PlayerController : MonoBehaviour
 
     [Header("Attack")]
     public float attackCooldown = 0.25f;
+    public float attackRange = 1.2f; // How far the attack reaches
+    public float attackAngle = 90f; // Attack arc in degrees
+    public float attackDamage = 10f; // Damage dealt to enemies
+    public LayerMask enemyLayer; // What layer enemies are on
+    public bool showAttackDebug = true; // Show attack hitbox visualization
     private float lastAttackTime = -Mathf.Infinity;
     private bool facingLocked = false;
     private Vector2 attackDir;
+    private HashSet<Collider2D> hitEnemiesThisAttack = new HashSet<Collider2D>(); // Track hit enemies
 
     private Vector2 movementInput;
     private Rigidbody2D rb;
@@ -216,6 +223,7 @@ public class PlayerController : MonoBehaviour
     public void AttackStart()
     {
         facingLocked = true;
+        hitEnemiesThisAttack.Clear(); // Reset hit tracking for new attack
 
         // Store FULL attack direction (up/down/left/right)
         attackDir = lastMoveDir;
@@ -230,6 +238,58 @@ public class PlayerController : MonoBehaviour
     public void AttackEnd()
     {
         facingLocked = false;
+    }
+
+    // Called by animation event at the moment of impact (when sword actually hits)
+    public void AttackHit()
+    {
+        DetectAndDamageEnemies();
+    }
+
+    // Detect enemies in attack range and damage them
+    private void DetectAndDamageEnemies()
+    {
+        // Get all colliders in attack range
+        Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(transform.position, attackRange, enemyLayer);
+
+        bool hitAnyEnemy = false; // Track if we hit at least one enemy
+
+        foreach (Collider2D enemy in hitEnemies)
+        {
+            // Skip if already hit this attack
+            if (hitEnemiesThisAttack.Contains(enemy))
+                continue;
+
+            // Calculate direction to enemy
+            Vector2 dirToEnemy = (enemy.transform.position - transform.position).normalized;
+
+            // Check if enemy is within attack angle
+            float angleToEnemy = Vector2.Angle(attackDir, dirToEnemy);
+            
+            if (angleToEnemy <= attackAngle / 2f)
+            {
+                // Enemy is within attack arc - deal damage
+                EnemyPatrol enemyScript = enemy.GetComponent<EnemyPatrol>();
+                if (enemyScript != null)
+                {
+                    enemyScript.TakeDamage(attackDamage);
+                    hitEnemiesThisAttack.Add(enemy); // Mark as hit
+                    hitAnyEnemy = true; // Mark that we hit an enemy
+                    
+                    // Visual feedback for debugging
+                    if (showAttackDebug)
+                    {
+                        Debug.DrawLine(transform.position, enemy.transform.position, Color.red, 0.5f);
+                    }
+                }
+            }
+        }
+
+        // Play slash sound if we hit any enemy
+        if (hitAnyEnemy)
+        {
+            AudioManager.Instance.PlayRandomSFX(attackSlashes);
+        }
     }
 
     // 6 Footstep sounds based on movement and timing
@@ -280,5 +340,56 @@ public class PlayerController : MonoBehaviour
         {
             isOnGrass = false;
         }
+    }
+
+    // Debug visualization of attack hitbox
+    private void OnDrawGizmosSelected()
+    {
+        if (!showAttackDebug) return;
+
+        // Draw attack range circle
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, attackRange);
+
+        // Draw attack arc
+        Vector2 direction = facingLocked ? attackDir : lastMoveDir;
+        Vector3 playerPos = transform.position;
+        
+        // Draw center line
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(playerPos, playerPos + (Vector3)direction * attackRange);
+
+        // Draw attack cone edges
+        Gizmos.color = Color.cyan;
+        float halfAngle = attackAngle / 2f;
+        
+        // Left edge
+        Vector2 leftDir = Rotate(direction, -halfAngle);
+        Gizmos.DrawLine(playerPos, playerPos + (Vector3)leftDir * attackRange);
+        
+        // Right edge
+        Vector2 rightDir = Rotate(direction, halfAngle);
+        Gizmos.DrawLine(playerPos, playerPos + (Vector3)rightDir * attackRange);
+        
+        // Draw arc
+        int segments = 20;
+        Vector3 previousPoint = playerPos + (Vector3)leftDir * attackRange;
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = Mathf.Lerp(-halfAngle, halfAngle, i / (float)segments);
+            Vector2 dir = Rotate(direction, angle);
+            Vector3 point = playerPos + (Vector3)dir * attackRange;
+            Gizmos.DrawLine(previousPoint, point);
+            previousPoint = point;
+        }
+    }
+
+    // Helper function to rotate a vector by an angle
+    private Vector2 Rotate(Vector2 v, float degrees)
+    {
+        float radians = degrees * Mathf.Deg2Rad;
+        float cos = Mathf.Cos(radians);
+        float sin = Mathf.Sin(radians);
+        return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
     }
 }
