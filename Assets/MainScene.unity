@@ -123,6 +123,50 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &238343884
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 238343886}
+  - component: {fileID: 238343885}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &238343885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 238343884}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d16f27715b55a543ab10e9bc2a61ef5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &238343886
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 238343884}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.7438682, y: -2.4740615, z: 0.058080085}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &370842713
 GameObject:
   m_ObjectHideFlags: 0
@@ -1095,6 +1139,7 @@ GameObject:
   - component: {fileID: 1542459948}
   - component: {fileID: 1542459951}
   - component: {fileID: 1542459952}
+  - component: {fileID: 1542459953}
   m_Layer: 0
   m_Name: EnemyGoblin
   m_TagString: Untagged
@@ -1182,11 +1227,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   patrolRadius: 3
-  speed: 2
+  speed: 3
   waitTime: 1
   chaseRadius: 7
   stopDistance: 0.5
   fieldOfViewAngle: 110
+  memoryDuration: 3
+  searchDuration: 8
+  searchRadius: 2.5
+  lookAheadDistance: 0.5
+  obstacleCheckRadius: 0.15
+  stuckThreshold: 0.1
+  stuckTimeLimit: 1.5
   player: {fileID: 1098726794}
 --- !u!95 &1542459950
 Animator:
@@ -1281,6 +1333,27 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.7451732, y: 1.2815151}
   m_EdgeRadius: 0
+--- !u!114 &1542459953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542459946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e6c4f8e39ade1147819d48fef3f8792, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  suspenseBubblePrefab: {fileID: 1144519690394324439, guid: 86ad11769d1784b47a84fbd857e4f3f0, type: 3}
+  questionBubblePrefab: {fileID: 7665764381986480412, guid: b132d870663902e4c9f2f941a00da947, type: 3}
+  exclamationBubblePrefab: {fileID: 0}
+  heartBubblePrefab: {fileID: 0}
+  angerBubblePrefab: {fileID: 0}
+  bubbleOffset: {x: 0, y: 0.8, z: 0}
+  followEntity: 1
+  defaultBubbleDuration: 1
+  preventDuplicates: 1
 --- !u!1 &1829881494
 GameObject:
   m_ObjectHideFlags: 0
@@ -1360,7 +1433,28 @@ MonoBehaviour:
     pitchMax: 1.05
     loop: 0
     source: {fileID: 0}
-  music: []
+  - name: Suspense
+    clip: {fileID: 8300000, guid: 09ec99f375da74140b9d6ad1f283cb40, type: 3}
+    volume: 0.4
+    pitchMin: 0.95
+    pitchMax: 1.05
+    loop: 0
+    source: {fileID: 0}
+  music:
+  - name: AmbientBGM
+    clip: {fileID: 8300000, guid: 5e5b3ffed146e664ca3995e8dec98f0f, type: 3}
+    volume: 0.4
+    pitchMin: 0
+    pitchMax: 0
+    loop: 1
+    source: {fileID: 0}
+  - name: BattleBGM1
+    clip: {fileID: 8300000, guid: 77bbe5f640a474448a54b1887d7e993a, type: 3}
+    volume: 0.2
+    pitchMin: 0
+    pitchMax: 0
+    loop: 1
+    source: {fileID: 0}
 --- !u!4 &1829881496
 Transform:
   m_ObjectHideFlags: 0
@@ -4015,3 +4109,4 @@ SceneRoots:
   - {fileID: 556605797}
   - {fileID: 1942332494}
   - {fileID: 1829881496}
+  - {fileID: 238343886}

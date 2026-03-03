@@ -104,6 +104,78 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    // Check if specific music is playing
+    public bool IsMusicPlaying(string musicName)
+    {
+        Sound s = System.Array.Find(music, sound => sound.name == musicName);
+        return s != null && s.source != null && s.source.isPlaying;
+    }
+
+    // Smooth crossfade between music tracks
+    public void CrossfadeMusic(string newMusicName, float fadeDuration = 1f)
+    {
+        Sound newSound = System.Array.Find(music, sound => sound.name == newMusicName);
+        if (newSound == null)
+        {
+            Debug.LogWarning("Music not found: " + newMusicName);
+            return;
+        }
+
+        // Don't restart if already playing
+        if (newSound.source.isPlaying) return;
+
+        // Start crossfade coroutine
+        StartCoroutine(CrossfadeCoroutine(newSound, fadeDuration));
+    }
+
+    private IEnumerator CrossfadeCoroutine(Sound newSound, float duration)
+    {
+        // Find currently playing music
+        Sound currentSound = null;
+        foreach (Sound m in music)
+        {
+            if (m.source.isPlaying)
+            {
+                currentSound = m;
+                break;
+            }
+        }
+
+        // Start new music at volume 0
+        newSound.source.volume = 0f;
+        newSound.source.Play();
+
+        // Crossfade
+        float elapsed = 0f;
+        float startVolume = currentSound != null ? currentSound.source.volume : 0f;
+        float targetVolume = newSound.volume;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+
+            // Fade out old music
+            if (currentSound != null)
+                currentSound.source.volume = Mathf.Lerp(startVolume, 0f, t);
+
+            // Fade in new music
+            newSound.source.volume = Mathf.Lerp(0f, targetVolume, t);
+
+            yield return null;
+        }
+
+        // Stop old music
+        if (currentSound != null)
+        {
+            currentSound.source.Stop();
+            currentSound.source.volume = currentSound.volume; // Reset volume
+        }
+
+        // Ensure new music is at correct volume
+        newSound.source.volume = targetVolume;
+    }
+
     // Play random SFX from array (no consecutive repeats)
     private int lastRandomIndex = -1;
     public void PlayRandomSFX(string[] soundNames)
@@ -118,5 +190,79 @@ public class AudioManager : MonoBehaviour
 
         lastRandomIndex = index;
         PlaySFX(soundNames[index]);
+    }
+
+    // Play random music from array (no consecutive repeats)
+    private int lastRandomMusicIndex = -1;
+    public void PlayRandomMusic(string[] musicNames, float fadeDuration = 1f)
+    {
+        if (musicNames == null || musicNames.Length == 0) return;
+
+        int index;
+        do
+        {
+            index = Random.Range(0, musicNames.Length);
+        } while (index == lastRandomMusicIndex && musicNames.Length > 1);
+
+        lastRandomMusicIndex = index;
+        CrossfadeMusic(musicNames[index], fadeDuration);
+    }
+
+    // ===== ENUM-BASED METHODS (Type-Safe) =====
+
+    /// <summary>
+    /// Play sound effect using enum (type-safe)
+    /// </summary>
+    public void PlaySFX(SFXType sfxType)
+    {
+        PlaySFX(sfxType.GetName());
+    }
+
+    /// <summary>
+    /// Play music using enum (type-safe)
+    /// </summary>
+    public void PlayMusic(MusicType musicType)
+    {
+        PlayMusic(musicType.GetName());
+    }
+
+    /// <summary>
+    /// Stop music using enum (type-safe)
+    /// </summary>
+    public void StopMusic(MusicType musicType)
+    {
+        StopMusic(musicType.GetName());
+    }
+
+    /// <summary>
+    /// Check if music is playing using enum (type-safe)
+    /// </summary>
+    public bool IsMusicPlaying(MusicType musicType)
+    {
+        return IsMusicPlaying(musicType.GetName());
+    }
+
+    /// <summary>
+    /// Crossfade music using enum (type-safe)
+    /// </summary>
+    public void CrossfadeMusic(MusicType musicType, float fadeDuration = 1f)
+    {
+        CrossfadeMusic(musicType.GetName(), fadeDuration);
+    }
+
+    /// <summary>
+    /// Play random SFX from enum array (type-safe, no consecutive repeats)
+    /// </summary>
+    public void PlayRandomSFX(SFXType[] sfxTypes)
+    {
+        PlayRandomSFX(sfxTypes.GetNames());
+    }
+
+    /// <summary>
+    /// Play random music from enum array (type-safe, no consecutive repeats)
+    /// </summary>
+    public void PlayRandomMusic(MusicType[] musicTypes, float fadeDuration = 1f)
+    {
+        PlayRandomMusic(musicTypes.GetNames(), fadeDuration);
     }
 }

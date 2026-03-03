@@ -24,9 +24,9 @@ public class PlayerController : MonoBehaviour
     public float footstepInterval = 0.8f;
     private float footstepTimer;
 
-    // String arrays for footstep sound names
-    private string[] grassFootsteps = { "FootstepGrass1", "FootstepGrass2", "FootstepGrass3" };
-    private string[] attackSwooshs = { "AttackSwoosh1", "AttackSwoosh2", "AttackSwoosh3" };
+    // Enum arrays for footstep sound names (type-safe)
+    private SFXType[] grassFootsteps = { SFXType.FootstepGrass1, SFXType.FootstepGrass2, SFXType.FootstepGrass3 };
+    private SFXType[] attackSwooshs = { SFXType.AttackSwoosh1, SFXType.AttackSwoosh2, SFXType.AttackSwoosh3 };
 
     //Ground detection
     private bool isOnGrass;
@@ -190,7 +190,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // ---- PLAY DASH SOUND ----
-        AudioManager.Instance.PlaySFX("Dash");
+        AudioManager.Instance.PlaySFX(SFXType.Dash);
 
         // ---- DASH MOVEMENT ----
         float startTime = Time.time;
