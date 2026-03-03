@@ -207,4 +207,62 @@ public class AudioManager : MonoBehaviour
         lastRandomMusicIndex = index;
         CrossfadeMusic(musicNames[index], fadeDuration);
     }
+
+    // ===== ENUM-BASED METHODS (Type-Safe) =====
+
+    /// <summary>
+    /// Play sound effect using enum (type-safe)
+    /// </summary>
+    public void PlaySFX(SFXType sfxType)
+    {
+        PlaySFX(sfxType.GetName());
+    }
+
+    /// <summary>
+    /// Play music using enum (type-safe)
+    /// </summary>
+    public void PlayMusic(MusicType musicType)
+    {
+        PlayMusic(musicType.GetName());
+    }
+
+    /// <summary>
+    /// Stop music using enum (type-safe)
+    /// </summary>
+    public void StopMusic(MusicType musicType)
+    {
+        StopMusic(musicType.GetName());
+    }
+
+    /// <summary>
+    /// Check if music is playing using enum (type-safe)
+    /// </summary>
+    public bool IsMusicPlaying(MusicType musicType)
+    {
+        return IsMusicPlaying(musicType.GetName());
+    }
+
+    /// <summary>
+    /// Crossfade music using enum (type-safe)
+    /// </summary>
+    public void CrossfadeMusic(MusicType musicType, float fadeDuration = 1f)
+    {
+        CrossfadeMusic(musicType.GetName(), fadeDuration);
+    }
+
+    /// <summary>
+    /// Play random SFX from enum array (type-safe, no consecutive repeats)
+    /// </summary>
+    public void PlayRandomSFX(SFXType[] sfxTypes)
+    {
+        PlayRandomSFX(sfxTypes.GetNames());
+    }
+
+    /// <summary>
+    /// Play random music from enum array (type-safe, no consecutive repeats)
+    /// </summary>
+    public void PlayRandomMusic(MusicType[] musicTypes, float fadeDuration = 1f)
+    {
+        PlayRandomMusic(musicTypes.GetNames(), fadeDuration);
+    }
 }

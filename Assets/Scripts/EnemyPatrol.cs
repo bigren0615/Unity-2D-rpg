@@ -118,7 +118,7 @@ public class EnemyPatrol : MonoBehaviour
                 // Play suspense sound and show bubble when first spotting player
                 if (!isChasing && !hasPlayedSpottedSound)
                 {
-                    AudioManager.Instance.PlaySFX("Suspense");
+                    AudioManager.Instance.PlaySFX(SFXType.Suspense);
                     hasPlayedSpottedSound = true;
                     battleMusicDelay = BATTLE_MUSIC_DELAY_TIME;
                     
@@ -189,7 +189,7 @@ public class EnemyPatrol : MonoBehaviour
                 }
                 else
                 {
-                    AudioManager.Instance.CrossfadeMusic("BattleBGM1", 0.5f);
+                    AudioManager.Instance.CrossfadeMusic(MusicType.BattleBGM1, 0.5f);
                     isBattleMusicPlaying = true;
                 }
             }
@@ -206,7 +206,7 @@ public class EnemyPatrol : MonoBehaviour
             // Return to ambient music when back to normal patrol
             if (isBattleMusicPlaying)
             {
-                AudioManager.Instance.CrossfadeMusic("AmbientBGM", 0.5f);
+                AudioManager.Instance.CrossfadeMusic(MusicType.AmbientBGM, 0.5f);
                 isBattleMusicPlaying = false;
             }
             
