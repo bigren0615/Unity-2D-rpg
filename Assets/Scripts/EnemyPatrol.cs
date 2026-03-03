@@ -26,6 +26,10 @@ public class EnemyPatrol : MonoBehaviour
 
     [Header("References")]
     public GameObject player; // Assign manually or leave blank to auto-find by tag
+    public GameObject suspenseBubblePrefab; // Drag the SuspenseBubble prefab here
+
+    [Header("Suspense Bubble Settings")]
+    public Vector3 bubbleOffset = new Vector3(0f, 0.8f, 0f); // Offset above enemy's head
 
     private Vector3 startPosition;
     private Vector3 targetPoint;
@@ -57,6 +61,9 @@ public class EnemyPatrol : MonoBehaviour
     private bool hasPlayedSpottedSound = false;
     private float battleMusicDelay = 0f;
     private const float BATTLE_MUSIC_DELAY_TIME = 1.0f; // Delay after suspense sound
+
+    // Suspense bubble tracking
+    private GameObject currentSuspenseBubble = null;
 
     void Start()
     {
@@ -107,12 +114,15 @@ public class EnemyPatrol : MonoBehaviour
                 hasPlayerInMemory = true;
                 lostSightTimer = 0f;
                 
-                // Play suspense sound when first spotting player
+                // Play suspense sound and show bubble when first spotting player
                 if (!isChasing && !hasPlayedSpottedSound)
                 {
                     AudioManager.Instance.PlaySFX("Suspense");
                     hasPlayedSpottedSound = true;
                     battleMusicDelay = BATTLE_MUSIC_DELAY_TIME;
+                    
+                    // Spawn suspense bubble above enemy's head
+                    SpawnSuspenseBubble();
                 }
                 
                 isChasing = true;
@@ -640,5 +650,53 @@ public class EnemyPatrol : MonoBehaviour
         Vector3 rightEdge = Quaternion.Euler(0, 0, halfAngle) * facingDir3D * chaseRadius;
         Gizmos.DrawLine(enemyPos, enemyPos + leftEdge);
         Gizmos.DrawLine(enemyPos, enemyPos + rightEdge);
+    }
+
+    // ---------------- Suspense Bubble ----------------
+    private void SpawnSuspenseBubble()
+    {
+        // Don't spawn if prefab is not assigned or bubble already exists
+        if (suspenseBubblePrefab == null || currentSuspenseBubble != null)
+            return;
+
+        // Instantiate bubble above enemy's head
+        Vector3 spawnPosition = transform.position + bubbleOffset;
+        currentSuspenseBubble = Instantiate(suspenseBubblePrefab, spawnPosition, Quaternion.identity, transform);
+
+        // Get the animator to determine animation length
+        Animator bubbleAnimator = currentSuspenseBubble.GetComponent<Animator>();
+        if (bubbleAnimator != null && bubbleAnimator.runtimeAnimatorController != null)
+        {
+            // Play animation from the start
+            AnimationClip[] clips = bubbleAnimator.runtimeAnimatorController.animationClips;
+            if (clips.Length > 0)
+            {
+                bubbleAnimator.Play(clips[0].name, 0, 0f);
+
+                // Destroy after animation completes
+                float clipLength = clips[0].length;
+                Destroy(currentSuspenseBubble, clipLength);
+            }
+            else
+            {
+                // Fallback: destroy after 1 second if no animation clip found
+                Destroy(currentSuspenseBubble, 1f);
+            }
+        }
+        else
+        {
+            // Fallback: destroy after 1 second if no animator found
+            Destroy(currentSuspenseBubble, 1f);
+        }
+
+        // Clear reference after destroying (with a slight delay to account for destroy time)
+        StartCoroutine(ClearBubbleReference());
+    }
+
+    private IEnumerator ClearBubbleReference()
+    {
+        // Wait a bit longer than the animation to ensure it's destroyed
+        yield return new WaitForSeconds(2f);
+        currentSuspenseBubble = null;
     }
 }

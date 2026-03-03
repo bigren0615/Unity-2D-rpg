@@ -1239,6 +1239,8 @@ MonoBehaviour:
   stuckThreshold: 0.1
   stuckTimeLimit: 1.5
   player: {fileID: 1098726794}
+  suspenseBubblePrefab: {fileID: 1144519690394324439, guid: 86ad11769d1784b47a84fbd857e4f3f0, type: 3}
+  bubbleOffset: {x: 0, y: 0.8, z: 0}
 --- !u!95 &1542459950
 Animator:
   serializedVersion: 5
