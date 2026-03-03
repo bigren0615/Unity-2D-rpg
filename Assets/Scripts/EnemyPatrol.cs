@@ -26,16 +26,12 @@ public class EnemyPatrol : MonoBehaviour
 
     [Header("References")]
     public GameObject player; // Assign manually or leave blank to auto-find by tag
-    public GameObject suspenseBubblePrefab; // Drag the SuspenseBubble prefab here
-    public GameObject questionBubblePrefab; // Drag the QuestionBubble prefab here
-
-    [Header("Bubble Settings")]
-    public Vector3 bubbleOffset = new Vector3(0f, 0.8f, 0f); // Offset above enemy's head
 
     private Vector3 startPosition;
     private Vector3 targetPoint;
     private Animator animator;
     private SpriteRenderer spriteRenderer;
+    private BubbleController bubbleController;
     private bool waiting = false;
     private float waitTimer = 0f;
 
@@ -64,8 +60,6 @@ public class EnemyPatrol : MonoBehaviour
     private const float BATTLE_MUSIC_DELAY_TIME = 1.0f; // Delay after suspense sound
 
     // Bubble tracking
-    private GameObject currentSuspenseBubble = null;
-    private GameObject currentQuestionBubble = null;
     private bool hasPlayedQuestionBubble = false;
 
     void Start()
@@ -76,8 +70,12 @@ public class EnemyPatrol : MonoBehaviour
 
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        bubbleController = GetComponent<BubbleController>();
+        
         if (spriteRenderer == null)
             Debug.LogError("Enemy needs a SpriteRenderer!");
+        if (bubbleController == null)
+            Debug.LogWarning("BubbleController component not found on " + gameObject.name + ". Bubbles will not appear.");
 
         // Auto-find player if not assigned
         if (player == null)
@@ -124,8 +122,9 @@ public class EnemyPatrol : MonoBehaviour
                     hasPlayedSpottedSound = true;
                     battleMusicDelay = BATTLE_MUSIC_DELAY_TIME;
                     
-                    // Spawn suspense bubble above enemy's head
-                    SpawnSuspenseBubble();
+                    // Show suspense bubble above enemy's head
+                    if (bubbleController != null)
+                        bubbleController.ShowSuspenseBubble();
                 }
                 
                 isChasing = true;
@@ -254,10 +253,11 @@ public class EnemyPatrol : MonoBehaviour
         PickRandomPoint(searchCenter, searchRadius);
         waiting = false;
         
-        // Spawn question bubble when losing track of player
+        // Show question bubble when losing track of player
         if (!hasPlayedQuestionBubble)
         {
-            SpawnQuestionBubble();
+            if (bubbleController != null)
+                bubbleController.ShowQuestionBubble();
             hasPlayedQuestionBubble = true;
         }
     }
@@ -661,101 +661,5 @@ public class EnemyPatrol : MonoBehaviour
         Vector3 rightEdge = Quaternion.Euler(0, 0, halfAngle) * facingDir3D * chaseRadius;
         Gizmos.DrawLine(enemyPos, enemyPos + leftEdge);
         Gizmos.DrawLine(enemyPos, enemyPos + rightEdge);
-    }
-
-    // ---------------- Suspense Bubble ----------------
-    private void SpawnSuspenseBubble()
-    {
-        // Don't spawn if prefab is not assigned or bubble already exists
-        if (suspenseBubblePrefab == null || currentSuspenseBubble != null)
-            return;
-
-        // Instantiate bubble above enemy's head
-        Vector3 spawnPosition = transform.position + bubbleOffset;
-        currentSuspenseBubble = Instantiate(suspenseBubblePrefab, spawnPosition, Quaternion.identity, transform);
-
-        // Get the animator to determine animation length
-        Animator bubbleAnimator = currentSuspenseBubble.GetComponent<Animator>();
-        if (bubbleAnimator != null && bubbleAnimator.runtimeAnimatorController != null)
-        {
-            // Play animation from the start
-            AnimationClip[] clips = bubbleAnimator.runtimeAnimatorController.animationClips;
-            if (clips.Length > 0)
-            {
-                bubbleAnimator.Play(clips[0].name, 0, 0f);
-
-                // Destroy after animation completes
-                float clipLength = clips[0].length;
-                Destroy(currentSuspenseBubble, clipLength);
-            }
-            else
-            {
-                // Fallback: destroy after 1 second if no animation clip found
-                Destroy(currentSuspenseBubble, 1f);
-            }
-        }
-        else
-        {
-            // Fallback: destroy after 1 second if no animator found
-            Destroy(currentSuspenseBubble, 1f);
-        }
-
-        // Clear reference after destroying (with a slight delay to account for destroy time)
-        StartCoroutine(ClearBubbleReference());
-    }
-
-    private IEnumerator ClearBubbleReference()
-    {
-        // Wait a bit longer than the animation to ensure it's destroyed
-        yield return new WaitForSeconds(2f);
-        currentSuspenseBubble = null;
-    }
-
-    // ---------------- Question Bubble ----------------
-    private void SpawnQuestionBubble()
-    {
-        // Don't spawn if prefab is not assigned or bubble already exists
-        if (questionBubblePrefab == null || currentQuestionBubble != null)
-            return;
-
-        // Instantiate bubble above enemy's head
-        Vector3 spawnPosition = transform.position + bubbleOffset;
-        currentQuestionBubble = Instantiate(questionBubblePrefab, spawnPosition, Quaternion.identity, transform);
-
-        // Get the animator to determine animation length
-        Animator bubbleAnimator = currentQuestionBubble.GetComponent<Animator>();
-        if (bubbleAnimator != null && bubbleAnimator.runtimeAnimatorController != null)
-        {
-            // Play animation from the start
-            AnimationClip[] clips = bubbleAnimator.runtimeAnimatorController.animationClips;
-            if (clips.Length > 0)
-            {
-                bubbleAnimator.Play(clips[0].name, 0, 0f);
-
-                // Destroy after animation completes
-                float clipLength = clips[0].length;
-                Destroy(currentQuestionBubble, clipLength);
-            }
-            else
-            {
-                // Fallback: destroy after 1 second if no animation clip found
-                Destroy(currentQuestionBubble, 1f);
-            }
-        }
-        else
-        {
-            // Fallback: destroy after 1 second if no animator found
-            Destroy(currentQuestionBubble, 1f);
-        }
-
-        // Clear reference after destroying (with a slight delay to account for destroy time)
-        StartCoroutine(ClearQuestionBubbleReference());
-    }
-
-    private IEnumerator ClearQuestionBubbleReference()
-    {
-        // Wait a bit longer than the animation to ensure it's destroyed
-        yield return new WaitForSeconds(2f);
-        currentQuestionBubble = null;
     }
 }

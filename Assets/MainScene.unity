@@ -1139,6 +1139,7 @@ GameObject:
   - component: {fileID: 1542459948}
   - component: {fileID: 1542459951}
   - component: {fileID: 1542459952}
+  - component: {fileID: 1542459953}
   m_Layer: 0
   m_Name: EnemyGoblin
   m_TagString: Untagged
@@ -1239,9 +1240,6 @@ MonoBehaviour:
   stuckThreshold: 0.1
   stuckTimeLimit: 1.5
   player: {fileID: 1098726794}
-  suspenseBubblePrefab: {fileID: 1144519690394324439, guid: 86ad11769d1784b47a84fbd857e4f3f0, type: 3}
-  questionBubblePrefab: {fileID: 7665764381986480412, guid: b132d870663902e4c9f2f941a00da947, type: 3}
-  bubbleOffset: {x: 0, y: 0.8, z: 0}
 --- !u!95 &1542459950
 Animator:
   serializedVersion: 5
@@ -1335,6 +1333,27 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.7451732, y: 1.2815151}
   m_EdgeRadius: 0
+--- !u!114 &1542459953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542459946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e6c4f8e39ade1147819d48fef3f8792, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  suspenseBubblePrefab: {fileID: 1144519690394324439, guid: 86ad11769d1784b47a84fbd857e4f3f0, type: 3}
+  questionBubblePrefab: {fileID: 7665764381986480412, guid: b132d870663902e4c9f2f941a00da947, type: 3}
+  exclamationBubblePrefab: {fileID: 0}
+  heartBubblePrefab: {fileID: 0}
+  angerBubblePrefab: {fileID: 0}
+  bubbleOffset: {x: 0, y: 0.8, z: 0}
+  followEntity: 1
+  defaultBubbleDuration: 1
+  preventDuplicates: 1
 --- !u!1 &1829881494
 GameObject:
   m_ObjectHideFlags: 0
