@@ -123,6 +123,50 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &238343884
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 238343886}
+  - component: {fileID: 238343885}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &238343885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 238343884}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d16f27715b55a543ab10e9bc2a61ef5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &238343886
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 238343884}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.7438682, y: -2.4740615, z: 0.058080085}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &370842713
 GameObject:
   m_ObjectHideFlags: 0
@@ -1187,6 +1231,13 @@ MonoBehaviour:
   chaseRadius: 7
   stopDistance: 0.5
   fieldOfViewAngle: 110
+  memoryDuration: 3
+  searchDuration: 8
+  searchRadius: 2.5
+  lookAheadDistance: 0.5
+  obstacleCheckRadius: 0.15
+  stuckThreshold: 0.1
+  stuckTimeLimit: 1.5
   player: {fileID: 1098726794}
 --- !u!95 &1542459950
 Animator:
@@ -1360,7 +1411,21 @@ MonoBehaviour:
     pitchMax: 1.05
     loop: 0
     source: {fileID: 0}
-  music: []
+  music:
+  - name: AmbientBGM
+    clip: {fileID: 8300000, guid: 5e5b3ffed146e664ca3995e8dec98f0f, type: 3}
+    volume: 0.5
+    pitchMin: 0
+    pitchMax: 0
+    loop: 1
+    source: {fileID: 0}
+  - name: BattleBGM1
+    clip: {fileID: 8300000, guid: 77bbe5f640a474448a54b1887d7e993a, type: 3}
+    volume: 0.4
+    pitchMin: 0
+    pitchMax: 0
+    loop: 1
+    source: {fileID: 0}
 --- !u!4 &1829881496
 Transform:
   m_ObjectHideFlags: 0
@@ -4015,3 +4080,4 @@ SceneRoots:
   - {fileID: 556605797}
   - {fileID: 1942332494}
   - {fileID: 1829881496}
+  - {fileID: 238343886}

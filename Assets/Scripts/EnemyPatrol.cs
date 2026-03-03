@@ -36,21 +36,24 @@ public class EnemyPatrol : MonoBehaviour
 
     private bool isChasing = false;
     private Vector2 facingDirection = Vector2.down; // Track which way enemy is facing
-    
+
     // Chase memory system
     private Vector3 lastKnownPlayerPosition;
     private float lostSightTimer = 0f;
     private bool hasPlayerInMemory = false;
-    
+
     // Search mode system
     private bool isSearching = false;
     private Vector3 searchCenter; // Where to search around
     private float searchTimer = 0f;
-    
+
     // Stuck detection
     private Vector3 lastPosition;
     private float stuckTimer = 0f;
     private Vector2 avoidanceDirection = Vector2.zero; // Current avoidance direction
+
+    // Music state tracking
+    private bool isBattleMusicPlaying = false;
 
     void Start()
     {
@@ -86,13 +89,13 @@ public class EnemyPatrol : MonoBehaviour
             Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
             Vector2 playerPos2D = new Vector2(player.transform.position.x, player.transform.position.y);
             float distToPlayer = Vector2.Distance(enemyPos2D, playerPos2D);
-            
+
             // Check both distance AND field of view AND line of sight
             bool inRange = distToPlayer <= chaseRadius;
             bool inFOV = IsPlayerInFieldOfView(playerPos2D);
             bool hasLineOfSight = HasClearLineOfSight(playerPos2D);
             bool canSeePlayer = inRange && inFOV && hasLineOfSight;
-            
+
             // Update chase memory
             if (canSeePlayer)
             {
@@ -107,7 +110,7 @@ public class EnemyPatrol : MonoBehaviour
             {
                 // Lost sight but still have memory
                 lostSightTimer += Time.deltaTime;
-                
+
                 if (lostSightTimer >= memoryDuration)
                 {
                     // Memory expired - enter search mode
@@ -118,9 +121,9 @@ public class EnemyPatrol : MonoBehaviour
                 else
                 {
                     // Still remember - check if close to last known position
-                    float distToLastKnown = Vector2.Distance(enemyPos2D, 
+                    float distToLastKnown = Vector2.Distance(enemyPos2D,
                         new Vector2(lastKnownPlayerPosition.x, lastKnownPlayerPosition.y));
-                    
+
                     if (distToLastKnown < stopDistance * 2f)
                     {
                         // Reached last known position and player not there - enter search mode
@@ -139,7 +142,7 @@ public class EnemyPatrol : MonoBehaviour
             {
                 isChasing = false;
             }
-            
+
             // Debug logging (comment out after testing)
             // Debug.Log($"CanSee: {canSeePlayer} | Memory: {hasPlayerInMemory} | Timer: {lostSightTimer:F1} | Chasing: {isChasing}");
         }
@@ -152,16 +155,31 @@ public class EnemyPatrol : MonoBehaviour
         if (isChasing)
         {
             ChasePlayer();
+
+            // Start battle music when chasing
+            if (!isBattleMusicPlaying)
+            {
+                AudioManager.Instance.CrossfadeMusic("BattleBGM1", 0.5f);
+                isBattleMusicPlaying = true;
+            }
         }
         else if (isSearching)
         {
             SearchForPlayer();
+            // Keep battle music during search
         }
         else
         {
             Patrol();
+
+            // Return to ambient music when back to normal patrol
+            if (isBattleMusicPlaying)
+            {
+                AudioManager.Instance.CrossfadeMusic("AmbientBGM", 0.5f);
+                isBattleMusicPlaying = false;
+            }
         }
-        
+
         // Detect if stuck
         DetectStuck();
     }
@@ -200,11 +218,11 @@ public class EnemyPatrol : MonoBehaviour
         PickRandomPoint(searchCenter, searchRadius);
         waiting = false;
     }
-    
+
     private void SearchForPlayer()
     {
         searchTimer += Time.deltaTime;
-        
+
         // Check if search time expired
         if (searchTimer >= searchDuration)
         {
@@ -213,7 +231,7 @@ public class EnemyPatrol : MonoBehaviour
             PickRandomPoint(startPosition, patrolRadius);
             return;
         }
-        
+
         // Search patrol behavior (same as normal patrol but around search center)
         if (waiting)
         {
@@ -242,10 +260,10 @@ public class EnemyPatrol : MonoBehaviour
         if (player == null) return;
 
         // Use last known position if player out of sight, otherwise use current position
-        Vector3 targetPos = hasPlayerInMemory && lostSightTimer > 0f 
-            ? lastKnownPlayerPosition 
+        Vector3 targetPos = hasPlayerInMemory && lostSightTimer > 0f
+            ? lastKnownPlayerPosition
             : player.transform.position;
-        
+
         // Use Vector2.Distance to ignore Z-axis
         Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
         Vector2 targetPos2D = new Vector2(targetPos.x, targetPos.y);
@@ -261,10 +279,10 @@ public class EnemyPatrol : MonoBehaviour
     {
         Vector3 dir = destination - transform.position;
         Vector2 moveDir2D = new Vector2(dir.x, dir.y).normalized;
-        
+
         // Smart obstacle avoidance
         Vector2 finalDirection = GetSmartMovementDirection(moveDir2D);
-        
+
         if (finalDirection == Vector2.zero)
         {
             // Completely stuck - handle based on state
@@ -277,11 +295,11 @@ public class EnemyPatrol : MonoBehaviour
             }
             return;
         }
-        
+
         // Apply movement
         Vector3 movement = new Vector3(finalDirection.x, finalDirection.y, 0f) * speed * Time.deltaTime;
         transform.position += movement;
-        
+
         // Update animator with the actual movement direction
         if (animator != null)
         {
@@ -312,27 +330,27 @@ public class EnemyPatrol : MonoBehaviour
             }
         }
     }
-    
+
     // ---------------- Smart Obstacle Avoidance ----------------
     private Vector2 GetSmartMovementDirection(Vector2 desiredDirection)
     {
         Vector2 currentPos2D = new Vector2(transform.position.x, transform.position.y);
-        
+
         // First check if desired direction is clear
         if (IsPathClear(currentPos2D, desiredDirection, lookAheadDistance))
         {
             avoidanceDirection = Vector2.zero; // Reset avoidance
             return desiredDirection;
         }
-        
+
         // Try to find best alternative direction
         // Test multiple angles around the desired direction
         float[] testAngles = { 15f, -15f, 30f, -30f, 45f, -45f, 60f, -60f, 75f, -75f, 90f, -90f, 120f, -120f, 150f, -150f };
-        
+
         foreach (float angle in testAngles)
         {
             Vector2 testDir = RotateVector(desiredDirection, angle);
-            
+
             if (IsPathClear(currentPos2D, testDir, lookAheadDistance))
             {
                 // Found a clear direction!
@@ -340,17 +358,17 @@ public class EnemyPatrol : MonoBehaviour
                 return testDir;
             }
         }
-        
+
         // If still stuck, try moving perpendicular to nearest obstacle
         Vector2 escapeDir = GetEscapeDirection(currentPos2D, desiredDirection);
         if (escapeDir != Vector2.zero)
         {
             return escapeDir;
         }
-        
+
         return Vector2.zero; // Completely stuck
     }
-    
+
     private bool IsPathClear(Vector2 startPos, Vector2 direction, float distance)
     {
         // Check multiple points along the path
@@ -360,7 +378,7 @@ public class EnemyPatrol : MonoBehaviour
             float checkDist = (distance / checkPoints) * i;
             Vector2 checkPos = startPos + direction * checkDist;
             Vector3 checkPos3D = new Vector3(checkPos.x, checkPos.y, transform.position.z);
-            
+
             if (Physics2D.OverlapCircle(checkPos3D, obstacleCheckRadius, LayerMask.GetMask("Solid")))
             {
                 return false; // Path blocked
@@ -368,7 +386,7 @@ public class EnemyPatrol : MonoBehaviour
         }
         return true; // Path clear
     }
-    
+
     private Vector2 RotateVector(Vector2 vec, float degrees)
     {
         float radians = degrees * Mathf.Deg2Rad;
@@ -379,34 +397,34 @@ public class EnemyPatrol : MonoBehaviour
             vec.x * sin + vec.y * cos
         );
     }
-    
+
     private Vector2 GetEscapeDirection(Vector2 currentPos, Vector2 blockedDirection)
     {
         // Try to move away from the nearest obstacle
         Vector2 perpendicular1 = new Vector2(-blockedDirection.y, blockedDirection.x);
         Vector2 perpendicular2 = new Vector2(blockedDirection.y, -blockedDirection.x);
-        
+
         if (IsPathClear(currentPos, perpendicular1, lookAheadDistance * 0.5f))
             return perpendicular1;
         if (IsPathClear(currentPos, perpendicular2, lookAheadDistance * 0.5f))
             return perpendicular2;
-            
+
         // Last resort: move backward
         if (IsPathClear(currentPos, -blockedDirection, lookAheadDistance * 0.5f))
             return -blockedDirection;
-            
+
         return Vector2.zero;
     }
-    
+
     // ---------------- Stuck Detection ----------------
     private void DetectStuck()
     {
         float distMoved = Vector3.Distance(transform.position, lastPosition);
-        
+
         if (distMoved < stuckThreshold)
         {
             stuckTimer += Time.deltaTime;
-            
+
             if (stuckTimer >= stuckTimeLimit)
             {
                 // We're stuck! Take action
@@ -426,7 +444,7 @@ public class EnemyPatrol : MonoBehaviour
             // Moving properly, reset timer
             stuckTimer = 0f;
         }
-        
+
         lastPosition = transform.position;
     }
 
@@ -435,22 +453,22 @@ public class EnemyPatrol : MonoBehaviour
     {
         Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
         Vector2 dirToPlayer = (playerPos2D - enemyPos2D).normalized;
-        
+
         // Calculate angle between facing direction and direction to player
         float angle = Vector2.Angle(facingDirection, dirToPlayer);
-        
+
         // Check if angle is within half the field of view
         return angle <= fieldOfViewAngle / 2f;
     }
-    
+
     // ---------------- Line of Sight Check ----------------
     private bool HasClearLineOfSight(Vector2 playerPos2D)
     {
         Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
-        
+
         // Perform raycast from enemy to player
         RaycastHit2D hit = Physics2D.Linecast(enemyPos2D, playerPos2D, LayerMask.GetMask("Solid"));
-        
+
         // If raycast hit something, line of sight is blocked
         // If it didn't hit anything (hit.collider == null), we have clear line of sight
         return hit.collider == null;
@@ -498,14 +516,14 @@ public class EnemyPatrol : MonoBehaviour
         // Spawn patrol radius
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(startPosition, patrolRadius);
-        
+
         // Search mode visualization
         if (isSearching)
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(searchCenter, searchRadius);
             Gizmos.DrawSphere(searchCenter, 0.15f);
-            
+
             // Draw timer progress
             Gizmos.color = new Color(1f, 0.5f, 0f); // Orange
             Gizmos.DrawLine(transform.position, searchCenter);
@@ -515,20 +533,20 @@ public class EnemyPatrol : MonoBehaviour
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(transform.position, targetPoint);
         Gizmos.DrawSphere(targetPoint, 0.05f);
-        
+
         // Draw line of sight to player (debug)
         if (player != null)
         {
             Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
             Vector2 playerPos2D = new Vector2(player.transform.position.x, player.transform.position.y);
             float distToPlayer = Vector2.Distance(enemyPos2D, playerPos2D);
-            
+
             // Only draw if player is in range
             if (distToPlayer <= chaseRadius)
             {
                 bool hasLOS = HasClearLineOfSight(playerPos2D);
                 bool inFOV = IsPlayerInFieldOfView(playerPos2D);
-                
+
                 // Draw line from enemy to player with color indicating status
                 if (!hasLOS)
                 {
@@ -544,7 +562,7 @@ public class EnemyPatrol : MonoBehaviour
                 }
             }
         }
-        
+
         // Draw chase visualization
         if (isChasing && player != null)
         {
@@ -554,7 +572,7 @@ public class EnemyPatrol : MonoBehaviour
                 Gizmos.color = Color.magenta;
                 Gizmos.DrawLine(transform.position, lastKnownPlayerPosition);
                 Gizmos.DrawWireSphere(lastKnownPlayerPosition, 0.2f);
-                
+
                 // Also draw faded line to actual player position
                 Gizmos.color = new Color(1f, 0f, 0f, 0.3f); // Faded red
                 Gizmos.DrawLine(transform.position, player.transform.position);
@@ -572,20 +590,20 @@ public class EnemyPatrol : MonoBehaviour
     {
         Vector3 enemyPos = transform.position;
         Vector3 facingDir3D = new Vector3(facingDirection.x, facingDirection.y, 0f);
-        
+
         // Draw the field of view cone
         Gizmos.color = new Color(1f, 1f, 0f, 0.2f); // Semi-transparent yellow
-        
+
         float halfAngle = fieldOfViewAngle / 2f;
         int segments = 20;
         Vector3 previousPoint = enemyPos;
-        
+
         for (int i = 0; i <= segments; i++)
         {
             float currentAngle = -halfAngle + (fieldOfViewAngle * i / segments);
             Vector3 direction = Quaternion.Euler(0, 0, currentAngle) * facingDir3D;
             Vector3 point = enemyPos + direction * chaseRadius;
-            
+
             if (i > 0)
             {
                 Gizmos.DrawLine(enemyPos, point);
@@ -593,7 +611,7 @@ public class EnemyPatrol : MonoBehaviour
             }
             previousPoint = point;
         }
-        
+
         // Draw the two edge lines more prominently
         Gizmos.color = Color.yellow;
         Vector3 leftEdge = Quaternion.Euler(0, 0, -halfAngle) * facingDir3D * chaseRadius;

@@ -104,6 +104,102 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+        // Fade between music tracks
+    public void SwitchMusic(string newMusicName)
+    {
+        Sound newSound = System.Array.Find(music, sound => sound.name == newMusicName);
+        if (newSound == null)
+        {
+            Debug.LogWarning("Music not found: " + newMusicName);
+            return;
+        }
+
+        // Stop all other music
+        foreach (Sound m in music)
+        {
+            if (m.source.isPlaying && m.name != newMusicName)
+                m.source.Stop();
+        }
+
+        // Play new music if not already playing
+        if (!newSound.source.isPlaying)
+        {
+            newSound.source.Play();
+        }
+    }
+
+    // Check if specific music is playing
+    public bool IsMusicPlaying(string musicName)
+    {
+        Sound s = System.Array.Find(music, sound => sound.name == musicName);
+        return s != null && s.source != null && s.source.isPlaying;
+    }
+
+    // Smooth crossfade between music tracks
+    public void CrossfadeMusic(string newMusicName, float fadeDuration = 1f)
+    {
+        Sound newSound = System.Array.Find(music, sound => sound.name == newMusicName);
+        if (newSound == null)
+        {
+            Debug.LogWarning("Music not found: " + newMusicName);
+            return;
+        }
+
+        // Don't restart if already playing
+        if (newSound.source.isPlaying) return;
+
+        // Start crossfade coroutine
+        StartCoroutine(CrossfadeCoroutine(newSound, fadeDuration));
+    }
+
+    private IEnumerator CrossfadeCoroutine(Sound newSound, float duration)
+    {
+        // Find currently playing music
+        Sound currentSound = null;
+        foreach (Sound m in music)
+        {
+            if (m.source.isPlaying)
+            {
+                currentSound = m;
+                break;
+            }
+        }
+
+        // Start new music at volume 0
+        newSound.source.volume = 0f;
+        newSound.source.Play();
+
+        // Crossfade
+        float elapsed = 0f;
+        float startVolume = currentSound != null ? currentSound.source.volume : 0f;
+        float targetVolume = newSound.volume;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+
+            // Fade out old music
+            if (currentSound != null)
+                currentSound.source.volume = Mathf.Lerp(startVolume, 0f, t);
+
+            // Fade in new music
+            newSound.source.volume = Mathf.Lerp(0f, targetVolume, t);
+
+            yield return null;
+        }
+
+        // Stop old music
+        if (currentSound != null)
+        {
+            currentSound.source.Stop();
+            currentSound.source.volume = currentSound.volume; // Reset volume
+        }
+
+        // Ensure new music is at correct volume
+        newSound.source.volume = targetVolume;
+    }
+
     // Play random SFX from array (no consecutive repeats)
     private int lastRandomIndex = -1;
     public void PlayRandomSFX(string[] soundNames)
