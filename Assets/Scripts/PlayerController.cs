@@ -20,23 +20,23 @@ public class PlayerController : MonoBehaviour
     [Header("Dash Effects")]
     public GameObject dashEffectPrefab;
 
-    [Header("Audio")]
-    public AudioClip dashSFX;       // assign your MP3 here in Inspector
-    public AudioClip[] footstepClips;
-
-    public float footstepInterval = 0.8f; // time between steps
-    private int lastFootstepIndex = -1;
+    [Header("Footsteps")]
+    public float footstepInterval = 0.8f;
     private float footstepTimer;
 
-    private AudioSource audioSource; // will grab AudioSource component
+    // String arrays for footstep sound names
+    private string[] grassFootsteps = { "FootstepGrass1", "FootstepGrass2", "FootstepGrass3" };
+    private string[] attackSwooshs = { "AttackSwoosh1", "AttackSwoosh2", "AttackSwoosh3" };
 
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float groundCheckRadius = 0.15f;
-    public LayerMask groundLayer;
-
+    //Ground detection
     private bool isOnGrass;
     private Vector2 lastPosition;
+
+    [Header("Attack")]
+    public float attackCooldown = 0.25f;
+    private float lastAttackTime = -Mathf.Infinity;
+    private bool facingLocked = false;
+    private Vector2 attackDir;
 
     private Vector2 movementInput;
     private Rigidbody2D rb;
@@ -46,10 +46,6 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
-        audioSource = GetComponent<AudioSource>();
-
-        if (audioSource == null)
-            Debug.LogError("AudioSource missing on Player!");
 
         // Automatically fetch SpriteRenderer if not assigned
         if (spriteRenderer == null)
@@ -69,6 +65,15 @@ public class PlayerController : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetMouseButtonDown(1)) // Shift or Right Click
             {
                 StartCoroutine(Dash());
+            }
+        }
+
+        // Attack input (LEFT CLICK or Z)
+        if (Time.time >= lastAttackTime + attackCooldown)
+        {
+            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Z))
+            {
+                Attack();
             }
         }
 
@@ -93,15 +98,24 @@ public class PlayerController : MonoBehaviour
         // Normalize so diagonal is not faster
         movementInput = movementInput.normalized;
 
+        // Check if we're currently in the Attack state
+        bool isInAttackState = animator.GetCurrentAnimatorStateInfo(0).IsName("Attack");
+
         // Update lastMoveDir only when input is not zero
-        if (movementInput != Vector2.zero)
+        if (!facingLocked && !isInAttackState && movementInput != Vector2.zero)
         {
             lastMoveDir = movementInput;
         }
 
         // Base sprite faces LEFT; flipX when moving right
-        if (movementInput.x > 0) spriteRenderer.flipX = true;
-        else if (movementInput.x < 0) spriteRenderer.flipX = false;
+        // Don't flip while in attack state OR while facing is locked
+        if (!facingLocked && !isInAttackState)
+        {
+            if (movementInput.x > 0)
+                spriteRenderer.flipX = true;
+            else if (movementInput.x < 0)
+                spriteRenderer.flipX = false;
+        }
     }
 
     // 2️ Physics-based movement
@@ -119,7 +133,16 @@ public class PlayerController : MonoBehaviour
 
         animator.SetBool("isMoving", isMoving);
 
-        if (isMoving)
+        // Check if we're currently in the Attack state (any layer, but typically layer 0)
+        bool isInAttackState = animator.GetCurrentAnimatorStateInfo(0).IsName("Attack");
+
+        // Keep using attackDir if we're locked OR still in attack state
+        if (facingLocked || isInAttackState)
+        {
+            animator.SetFloat("moveX", Mathf.Abs(attackDir.x));
+            animator.SetFloat("moveY", attackDir.y);
+        }
+        else if (isMoving)
         {
             animator.SetFloat("moveX", Mathf.Abs(movementInput.x));
             animator.SetFloat("moveY", movementInput.y);
@@ -167,10 +190,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // ---- PLAY DASH SOUND ----
-        if (dashSFX != null && audioSource != null)
-        {
-            audioSource.PlayOneShot(dashSFX);
-        }
+        AudioManager.Instance.PlaySFX("Dash");
 
         // ---- DASH MOVEMENT ----
         float startTime = Time.time;
@@ -184,7 +204,35 @@ public class PlayerController : MonoBehaviour
         isDashing = false;
     }
 
-    // 5️ Footstep sounds based on movement and timing
+    // 5 Attack method to trigger attack animation and cooldown
+    private void Attack()
+    {
+        lastAttackTime = Time.time;
+        animator.SetTrigger("Attack");
+        AudioManager.Instance.PlayRandomSFX(attackSwooshs);
+    }
+
+    // Called by animation event at the start of the attack animation
+    public void AttackStart()
+    {
+        facingLocked = true;
+
+        // Store FULL attack direction (up/down/left/right)
+        attackDir = lastMoveDir;
+
+        // Lock sprite flip to attack direction
+        if (attackDir.x > 0)
+            spriteRenderer.flipX = true;
+        else if (attackDir.x < 0)
+            spriteRenderer.flipX = false;
+    }
+
+    public void AttackEnd()
+    {
+        facingLocked = false;
+    }
+
+    // 6 Footstep sounds based on movement and timing
     private void HandleFootsteps()
     {
         // Do not play footsteps while dashing
@@ -204,7 +252,10 @@ public class PlayerController : MonoBehaviour
 
             if (footstepTimer >= footstepInterval)
             {
-                if (isOnGrass) PlayFootstepGrass();
+                if (isOnGrass)
+                {
+                    AudioManager.Instance.PlayRandomSFX(grassFootsteps);
+                }
 
                 footstepTimer = 0f;
             }
@@ -213,23 +264,6 @@ public class PlayerController : MonoBehaviour
         {
             footstepTimer = 0f; // reset when idle
         }
-    }
-
-    private void PlayFootstepGrass()
-    {
-        if (footstepClips == null || footstepClips.Length == 0) return;
-
-        int index;
-        do
-        {
-            index = Random.Range(0, footstepClips.Length);
-        } while (index == lastFootstepIndex && footstepClips.Length > 1);
-
-        lastFootstepIndex = index;
-
-        audioSource.pitch = Random.Range(0.95f, 1.05f);
-        audioSource.PlayOneShot(footstepClips[index], 0.6f);
-        audioSource.pitch = 1f;
     }
 
     private void OnTriggerStay2D(Collider2D other)
