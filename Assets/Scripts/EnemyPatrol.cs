@@ -15,6 +15,8 @@ public class EnemyPatrol : MonoBehaviour
     [Range(0f, 360f)]
     public float fieldOfViewAngle = 110f; // Enemy can only see within this angle (in degrees)
     public float memoryDuration = 3f; // How long to remember player after losing sight (seconds)
+    public float searchDuration = 8f; // How long to search around last known position before returning to spawn
+    public float searchRadius = 2.5f; // Radius to patrol while searching for player
 
     [Header("Obstacle Avoidance")]
     public float lookAheadDistance = 0.5f; // How far to check for obstacles
@@ -40,6 +42,11 @@ public class EnemyPatrol : MonoBehaviour
     private float lostSightTimer = 0f;
     private bool hasPlayerInMemory = false;
     
+    // Search mode system
+    private bool isSearching = false;
+    private Vector3 searchCenter; // Where to search around
+    private float searchTimer = 0f;
+    
     // Stuck detection
     private Vector3 lastPosition;
     private float stuckTimer = 0f;
@@ -49,7 +56,7 @@ public class EnemyPatrol : MonoBehaviour
     {
         startPosition = transform.position;
         lastPosition = transform.position;
-        PickRandomPoint();
+        PickRandomPoint(startPosition, patrolRadius);
 
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -93,6 +100,7 @@ public class EnemyPatrol : MonoBehaviour
                 hasPlayerInMemory = true;
                 lostSightTimer = 0f;
                 isChasing = true;
+                isSearching = false; // Exit search mode if spotted player again
             }
             else if (hasPlayerInMemory)
             {
@@ -101,9 +109,10 @@ public class EnemyPatrol : MonoBehaviour
                 
                 if (lostSightTimer >= memoryDuration)
                 {
-                    // Memory expired
+                    // Memory expired - enter search mode
                     hasPlayerInMemory = false;
                     isChasing = false;
+                    EnterSearchMode(lastKnownPlayerPosition);
                 }
                 else
                 {
@@ -113,9 +122,10 @@ public class EnemyPatrol : MonoBehaviour
                     
                     if (distToLastKnown < stopDistance * 2f)
                     {
-                        // Reached last known position and player not there - give up
+                        // Reached last known position and player not there - enter search mode
                         hasPlayerInMemory = false;
                         isChasing = false;
+                        EnterSearchMode(lastKnownPlayerPosition);
                     }
                     else
                     {
@@ -142,6 +152,10 @@ public class EnemyPatrol : MonoBehaviour
         {
             ChasePlayer();
         }
+        else if (isSearching)
+        {
+            SearchForPlayer();
+        }
         else
         {
             Patrol();
@@ -160,7 +174,7 @@ public class EnemyPatrol : MonoBehaviour
             if (waitTimer <= 0f)
             {
                 waiting = false;
-                PickRandomPoint();
+                PickRandomPoint(startPosition, patrolRadius);
             }
             return;
         }
@@ -172,6 +186,52 @@ public class EnemyPatrol : MonoBehaviour
         {
             waiting = true;
             waitTimer = waitTime;
+        }
+    }
+
+    // ---------------- Search Mode ----------------
+    private void EnterSearchMode(Vector3 searchPosition)
+    {
+        isSearching = true;
+        searchCenter = searchPosition;
+        searchTimer = 0f;
+        // Pick first search point
+        PickRandomPoint(searchCenter, searchRadius);
+        waiting = false;
+    }
+    
+    private void SearchForPlayer()
+    {
+        searchTimer += Time.deltaTime;
+        
+        // Check if search time expired
+        if (searchTimer >= searchDuration)
+        {
+            // Give up searching, return to normal patrol
+            isSearching = false;
+            PickRandomPoint(startPosition, patrolRadius);
+            return;
+        }
+        
+        // Search patrol behavior (same as normal patrol but around search center)
+        if (waiting)
+        {
+            waitTimer -= Time.deltaTime;
+            if (waitTimer <= 0f)
+            {
+                waiting = false;
+                PickRandomPoint(searchCenter, searchRadius);
+            }
+            return;
+        }
+
+        MoveToward(targetPoint);
+
+        // Reached target point
+        if (Vector3.Distance(transform.position, targetPoint) < 0.05f)
+        {
+            waiting = true;
+            waitTimer = waitTime * 0.7f; // Slightly faster search patrol
         }
     }
 
@@ -209,7 +269,10 @@ public class EnemyPatrol : MonoBehaviour
             // Completely stuck - handle based on state
             if (!isChasing)
             {
-                PickRandomPoint();
+                if (isSearching)
+                    PickRandomPoint(searchCenter, searchRadius);
+                else
+                    PickRandomPoint(startPosition, patrolRadius);
             }
             return;
         }
@@ -349,7 +412,10 @@ public class EnemyPatrol : MonoBehaviour
                 if (!isChasing)
                 {
                     // Pick a new patrol point
-                    PickRandomPoint();
+                    if (isSearching)
+                        PickRandomPoint(searchCenter, searchRadius);
+                    else
+                        PickRandomPoint(startPosition, patrolRadius);
                 }
                 stuckTimer = 0f;
             }
@@ -377,13 +443,13 @@ public class EnemyPatrol : MonoBehaviour
     }
 
     // ---------------- Pick Random Patrol Point ----------------
-    private void PickRandomPoint()
+    private void PickRandomPoint(Vector3 center, float radius)
     {
         int maxAttempts = 10; // try 10 times to find a free spot
         for (int i = 0; i < maxAttempts; i++)
         {
-            Vector2 randomCircle = Random.insideUnitCircle * patrolRadius;
-            Vector3 potentialPoint = startPosition + new Vector3(randomCircle.x, randomCircle.y, 0f);
+            Vector2 randomCircle = Random.insideUnitCircle * radius;
+            Vector3 potentialPoint = center + new Vector3(randomCircle.x, randomCircle.y, 0f);
 
             // Only pick free spot
             if (!Physics2D.OverlapCircle(potentialPoint, 0.2f, LayerMask.GetMask("Solid")))
@@ -394,14 +460,19 @@ public class EnemyPatrol : MonoBehaviour
         }
 
         // fallback
-        targetPoint = startPosition;
+        targetPoint = center;
     }
 
     // ---------------- Debug Gizmos ----------------
     private void OnDrawGizmosSelected()
     {
-        // Chase radius (always visible - shows detection range)
-        Gizmos.color = isChasing ? Color.red : Color.yellow;
+        // Chase radius (color indicates state)
+        if (isChasing)
+            Gizmos.color = Color.red; // Chasing
+        else if (isSearching)
+            Gizmos.color = new Color(1f, 0.5f, 0f); // Orange - Searching
+        else
+            Gizmos.color = Color.yellow; // Normal patrol
         Gizmos.DrawWireSphere(transform.position, chaseRadius);
 
         if (!Application.isPlaying)
@@ -410,9 +481,21 @@ public class EnemyPatrol : MonoBehaviour
         // Draw Field of View cone
         DrawFieldOfViewCone();
 
-        // Patrol radius
+        // Spawn patrol radius
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(startPosition, patrolRadius);
+        
+        // Search mode visualization
+        if (isSearching)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(searchCenter, searchRadius);
+            Gizmos.DrawSphere(searchCenter, 0.15f);
+            
+            // Draw timer progress
+            Gizmos.color = new Color(1f, 0.5f, 0f); // Orange
+            Gizmos.DrawLine(transform.position, searchCenter);
+        }
 
         // Next patrol target
         Gizmos.color = Color.cyan;
