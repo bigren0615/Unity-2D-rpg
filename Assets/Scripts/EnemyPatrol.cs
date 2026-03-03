@@ -87,10 +87,11 @@ public class EnemyPatrol : MonoBehaviour
             Vector2 playerPos2D = new Vector2(player.transform.position.x, player.transform.position.y);
             float distToPlayer = Vector2.Distance(enemyPos2D, playerPos2D);
             
-            // Check both distance AND field of view
+            // Check both distance AND field of view AND line of sight
             bool inRange = distToPlayer <= chaseRadius;
             bool inFOV = IsPlayerInFieldOfView(playerPos2D);
-            bool canSeePlayer = inRange && inFOV;
+            bool hasLineOfSight = HasClearLineOfSight(playerPos2D);
+            bool canSeePlayer = inRange && inFOV && hasLineOfSight;
             
             // Update chase memory
             if (canSeePlayer)
@@ -441,6 +442,19 @@ public class EnemyPatrol : MonoBehaviour
         // Check if angle is within half the field of view
         return angle <= fieldOfViewAngle / 2f;
     }
+    
+    // ---------------- Line of Sight Check ----------------
+    private bool HasClearLineOfSight(Vector2 playerPos2D)
+    {
+        Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
+        
+        // Perform raycast from enemy to player
+        RaycastHit2D hit = Physics2D.Linecast(enemyPos2D, playerPos2D, LayerMask.GetMask("Solid"));
+        
+        // If raycast hit something, line of sight is blocked
+        // If it didn't hit anything (hit.collider == null), we have clear line of sight
+        return hit.collider == null;
+    }
 
     // ---------------- Pick Random Patrol Point ----------------
     private void PickRandomPoint(Vector3 center, float radius)
@@ -501,6 +515,35 @@ public class EnemyPatrol : MonoBehaviour
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(transform.position, targetPoint);
         Gizmos.DrawSphere(targetPoint, 0.05f);
+        
+        // Draw line of sight to player (debug)
+        if (player != null)
+        {
+            Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
+            Vector2 playerPos2D = new Vector2(player.transform.position.x, player.transform.position.y);
+            float distToPlayer = Vector2.Distance(enemyPos2D, playerPos2D);
+            
+            // Only draw if player is in range
+            if (distToPlayer <= chaseRadius)
+            {
+                bool hasLOS = HasClearLineOfSight(playerPos2D);
+                bool inFOV = IsPlayerInFieldOfView(playerPos2D);
+                
+                // Draw line from enemy to player with color indicating status
+                if (!hasLOS)
+                {
+                    // Line of sight blocked - draw grey dashed-looking line
+                    Gizmos.color = new Color(0.5f, 0.5f, 0.5f, 0.4f);
+                    Gizmos.DrawLine(transform.position, player.transform.position);
+                }
+                else if (!inFOV)
+                {
+                    // Has LOS but outside FOV - draw white transparent line
+                    Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
+                    Gizmos.DrawLine(transform.position, player.transform.position);
+                }
+            }
+        }
         
         // Draw chase visualization
         if (isChasing && player != null)
