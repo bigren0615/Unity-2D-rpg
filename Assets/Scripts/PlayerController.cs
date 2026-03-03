@@ -20,15 +20,12 @@ public class PlayerController : MonoBehaviour
     [Header("Dash Effects")]
     public GameObject dashEffectPrefab;
 
-    [Header("Audio")]
-    public AudioClip dashSFX;       // assign your MP3 here in Inspector
-    public AudioClip[] footstepClips;
-
-    public float footstepInterval = 0.8f; // time between steps
-    private int lastFootstepIndex = -1;
+    [Header("Footsteps")]
+    public float footstepInterval = 0.8f;
     private float footstepTimer;
 
-    private AudioSource audioSource; // will grab AudioSource component
+    // String arrays for footstep sound names
+    private string[] grassFootsteps = { "FootstepGrass1", "FootstepGrass2", "FootstepGrass3" };
 
     //Ground detection
     private bool isOnGrass;
@@ -48,10 +45,6 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
-        audioSource = GetComponent<AudioSource>();
-
-        if (audioSource == null)
-            Debug.LogError("AudioSource missing on Player!");
 
         // Automatically fetch SpriteRenderer if not assigned
         if (spriteRenderer == null)
@@ -196,10 +189,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // ---- PLAY DASH SOUND ----
-        if (dashSFX != null && audioSource != null)
-        {
-            audioSource.PlayOneShot(dashSFX);
-        }
+        AudioManager.Instance.PlaySFX("Dash");
 
         // ---- DASH MOVEMENT ----
         float startTime = Time.time;
@@ -260,7 +250,10 @@ public class PlayerController : MonoBehaviour
 
             if (footstepTimer >= footstepInterval)
             {
-                if (isOnGrass) PlayFootstepGrass();
+                if (isOnGrass)
+                {
+                    AudioManager.Instance.PlayRandomSFX(grassFootsteps);
+                }
 
                 footstepTimer = 0f;
             }
@@ -269,23 +262,6 @@ public class PlayerController : MonoBehaviour
         {
             footstepTimer = 0f; // reset when idle
         }
-    }
-
-    private void PlayFootstepGrass()
-    {
-        if (footstepClips == null || footstepClips.Length == 0) return;
-
-        int index;
-        do
-        {
-            index = Random.Range(0, footstepClips.Length);
-        } while (index == lastFootstepIndex && footstepClips.Length > 1);
-
-        lastFootstepIndex = index;
-
-        audioSource.pitch = Random.Range(0.95f, 1.05f);
-        audioSource.PlayOneShot(footstepClips[index], 0.6f);
-        audioSource.pitch = 1f;
     }
 
     private void OnTriggerStay2D(Collider2D other)
