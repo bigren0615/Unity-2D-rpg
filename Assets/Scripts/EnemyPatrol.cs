@@ -14,6 +14,13 @@ public class EnemyPatrol : MonoBehaviour
     public float stopDistance = 0.5f; // Minimum distance to stop near player
     [Range(0f, 360f)]
     public float fieldOfViewAngle = 110f; // Enemy can only see within this angle (in degrees)
+    public float memoryDuration = 3f; // How long to remember player after losing sight (seconds)
+
+    [Header("Obstacle Avoidance")]
+    public float lookAheadDistance = 0.5f; // How far to check for obstacles
+    public float obstacleCheckRadius = 0.15f; // Radius for obstacle detection
+    public float stuckThreshold = 0.1f; // Distance threshold to detect if stuck
+    public float stuckTimeLimit = 1.5f; // Time before considering enemy stuck
 
     [Header("References")]
     public GameObject player; // Assign manually or leave blank to auto-find by tag
@@ -27,10 +34,21 @@ public class EnemyPatrol : MonoBehaviour
 
     private bool isChasing = false;
     private Vector2 facingDirection = Vector2.down; // Track which way enemy is facing
+    
+    // Chase memory system
+    private Vector3 lastKnownPlayerPosition;
+    private float lostSightTimer = 0f;
+    private bool hasPlayerInMemory = false;
+    
+    // Stuck detection
+    private Vector3 lastPosition;
+    private float stuckTimer = 0f;
+    private Vector2 avoidanceDirection = Vector2.zero; // Current avoidance direction
 
     void Start()
     {
         startPosition = transform.position;
+        lastPosition = transform.position;
         PickRandomPoint();
 
         animator = GetComponent<Animator>();
@@ -65,14 +83,59 @@ public class EnemyPatrol : MonoBehaviour
             // Check both distance AND field of view
             bool inRange = distToPlayer <= chaseRadius;
             bool inFOV = IsPlayerInFieldOfView(playerPos2D);
-            isChasing = inRange && inFOV;
+            bool canSeePlayer = inRange && inFOV;
+            
+            // Update chase memory
+            if (canSeePlayer)
+            {
+                // Can see player - update last known position and reset timer
+                lastKnownPlayerPosition = player.transform.position;
+                hasPlayerInMemory = true;
+                lostSightTimer = 0f;
+                isChasing = true;
+            }
+            else if (hasPlayerInMemory)
+            {
+                // Lost sight but still have memory
+                lostSightTimer += Time.deltaTime;
+                
+                if (lostSightTimer >= memoryDuration)
+                {
+                    // Memory expired
+                    hasPlayerInMemory = false;
+                    isChasing = false;
+                }
+                else
+                {
+                    // Still remember - check if close to last known position
+                    float distToLastKnown = Vector2.Distance(enemyPos2D, 
+                        new Vector2(lastKnownPlayerPosition.x, lastKnownPlayerPosition.y));
+                    
+                    if (distToLastKnown < stopDistance * 2f)
+                    {
+                        // Reached last known position and player not there - give up
+                        hasPlayerInMemory = false;
+                        isChasing = false;
+                    }
+                    else
+                    {
+                        // Continue chasing to last known position
+                        isChasing = true;
+                    }
+                }
+            }
+            else
+            {
+                isChasing = false;
+            }
             
             // Debug logging (comment out after testing)
-            // Debug.Log($"Distance: {distToPlayer:F2} | InRange: {inRange} | InFOV: {inFOV} | Chasing: {isChasing}");
+            // Debug.Log($"CanSee: {canSeePlayer} | Memory: {hasPlayerInMemory} | Timer: {lostSightTimer:F1} | Chasing: {isChasing}");
         }
         else
         {
             isChasing = false;
+            hasPlayerInMemory = false;
         }
 
         if (isChasing)
@@ -83,6 +146,9 @@ public class EnemyPatrol : MonoBehaviour
         {
             Patrol();
         }
+        
+        // Detect if stuck
+        DetectStuck();
     }
 
     // ---------------- Patrol ----------------
@@ -114,60 +180,49 @@ public class EnemyPatrol : MonoBehaviour
     {
         if (player == null) return;
 
-        Vector3 playerPos = player.transform.position;
+        // Use last known position if player out of sight, otherwise use current position
+        Vector3 targetPos = hasPlayerInMemory && lostSightTimer > 0f 
+            ? lastKnownPlayerPosition 
+            : player.transform.position;
+        
         // Use Vector2.Distance to ignore Z-axis
         Vector2 enemyPos2D = new Vector2(transform.position.x, transform.position.y);
-        Vector2 playerPos2D = new Vector2(playerPos.x, playerPos.y);
-        float dist = Vector2.Distance(enemyPos2D, playerPos2D);
+        Vector2 targetPos2D = new Vector2(targetPos.x, targetPos.y);
+        float dist = Vector2.Distance(enemyPos2D, targetPos2D);
 
-        // Stop when close to player
+        // Stop when close to target
         if (dist > stopDistance)
-            MoveToward(playerPos);
+            MoveToward(targetPos);
     }
 
     // ---------------- Move Helper ----------------
     private void MoveToward(Vector3 destination)
     {
         Vector3 dir = destination - transform.position;
-        Vector3 moveDir = dir.normalized;
-
-        Vector3 nextPos = transform.position + moveDir * speed * Time.deltaTime;
-
-        // Check collision with Solid layer
-        if (!Physics2D.OverlapCircle(nextPos, 0.1f, LayerMask.GetMask("Solid")))
+        Vector2 moveDir2D = new Vector2(dir.x, dir.y).normalized;
+        
+        // Smart obstacle avoidance
+        Vector2 finalDirection = GetSmartMovementDirection(moveDir2D);
+        
+        if (finalDirection == Vector2.zero)
         {
-            transform.position = nextPos;
-        }
-        else
-        {
-            // If blocked, try moving around the obstacle
-            // Try perpendicular directions
-            Vector3 altDir1 = new Vector3(-moveDir.y, moveDir.x, 0f); // 90 degrees
-            Vector3 altDir2 = new Vector3(moveDir.y, -moveDir.x, 0f); // -90 degrees
-            
-            Vector3 altPos1 = transform.position + altDir1 * speed * Time.deltaTime;
-            Vector3 altPos2 = transform.position + altDir2 * speed * Time.deltaTime;
-            
-            if (!Physics2D.OverlapCircle(altPos1, 0.1f, LayerMask.GetMask("Solid")))
+            // Completely stuck - handle based on state
+            if (!isChasing)
             {
-                transform.position = altPos1;
-            }
-            else if (!Physics2D.OverlapCircle(altPos2, 0.1f, LayerMask.GetMask("Solid")))
-            {
-                transform.position = altPos2;
-            }
-            else if (!isChasing)
-            {
-                // If completely blocked while patrolling, pick new random point
                 PickRandomPoint();
             }
+            return;
         }
-
-        // Update animator
+        
+        // Apply movement
+        Vector3 movement = new Vector3(finalDirection.x, finalDirection.y, 0f) * speed * Time.deltaTime;
+        transform.position += movement;
+        
+        // Update animator with the actual movement direction
         if (animator != null)
         {
-            animator.SetFloat("moveX", Mathf.Abs(moveDir.x));
-            animator.SetFloat("moveY", moveDir.y);
+            animator.SetFloat("moveX", Mathf.Abs(finalDirection.x));
+            animator.SetFloat("moveY", finalDirection.y);
             animator.SetBool("isAttacking", false);
             animator.SetBool("isDead", false);
         }
@@ -175,17 +230,137 @@ public class EnemyPatrol : MonoBehaviour
         // Flip sprite for left/right
         if (spriteRenderer != null)
         {
-            if (moveDir.x > 0.01f)
+            if (finalDirection.x > 0.01f)
                 spriteRenderer.flipX = true;
-            else if (moveDir.x < -0.01f)
+            else if (finalDirection.x < -0.01f)
                 spriteRenderer.flipX = false;
         }
 
         // Update facing direction for FOV calculation
-        if (moveDir.sqrMagnitude > 0.01f)
+        // Only update when not avoiding obstacles during chase to maintain chase focus
+        if (finalDirection.sqrMagnitude > 0.01f)
         {
-            facingDirection = new Vector2(moveDir.x, moveDir.y).normalized;
+            // During patrol, always update facing
+            // During chase, only update if moving in roughly the intended direction
+            if (!isChasing || avoidanceDirection == Vector2.zero)
+            {
+                facingDirection = finalDirection;
+            }
         }
+    }
+    
+    // ---------------- Smart Obstacle Avoidance ----------------
+    private Vector2 GetSmartMovementDirection(Vector2 desiredDirection)
+    {
+        Vector2 currentPos2D = new Vector2(transform.position.x, transform.position.y);
+        
+        // First check if desired direction is clear
+        if (IsPathClear(currentPos2D, desiredDirection, lookAheadDistance))
+        {
+            avoidanceDirection = Vector2.zero; // Reset avoidance
+            return desiredDirection;
+        }
+        
+        // Try to find best alternative direction
+        // Test multiple angles around the desired direction
+        float[] testAngles = { 15f, -15f, 30f, -30f, 45f, -45f, 60f, -60f, 75f, -75f, 90f, -90f, 120f, -120f, 150f, -150f };
+        
+        foreach (float angle in testAngles)
+        {
+            Vector2 testDir = RotateVector(desiredDirection, angle);
+            
+            if (IsPathClear(currentPos2D, testDir, lookAheadDistance))
+            {
+                // Found a clear direction!
+                avoidanceDirection = testDir;
+                return testDir;
+            }
+        }
+        
+        // If still stuck, try moving perpendicular to nearest obstacle
+        Vector2 escapeDir = GetEscapeDirection(currentPos2D, desiredDirection);
+        if (escapeDir != Vector2.zero)
+        {
+            return escapeDir;
+        }
+        
+        return Vector2.zero; // Completely stuck
+    }
+    
+    private bool IsPathClear(Vector2 startPos, Vector2 direction, float distance)
+    {
+        // Check multiple points along the path
+        int checkPoints = 3;
+        for (int i = 1; i <= checkPoints; i++)
+        {
+            float checkDist = (distance / checkPoints) * i;
+            Vector2 checkPos = startPos + direction * checkDist;
+            Vector3 checkPos3D = new Vector3(checkPos.x, checkPos.y, transform.position.z);
+            
+            if (Physics2D.OverlapCircle(checkPos3D, obstacleCheckRadius, LayerMask.GetMask("Solid")))
+            {
+                return false; // Path blocked
+            }
+        }
+        return true; // Path clear
+    }
+    
+    private Vector2 RotateVector(Vector2 vec, float degrees)
+    {
+        float radians = degrees * Mathf.Deg2Rad;
+        float cos = Mathf.Cos(radians);
+        float sin = Mathf.Sin(radians);
+        return new Vector2(
+            vec.x * cos - vec.y * sin,
+            vec.x * sin + vec.y * cos
+        );
+    }
+    
+    private Vector2 GetEscapeDirection(Vector2 currentPos, Vector2 blockedDirection)
+    {
+        // Try to move away from the nearest obstacle
+        Vector2 perpendicular1 = new Vector2(-blockedDirection.y, blockedDirection.x);
+        Vector2 perpendicular2 = new Vector2(blockedDirection.y, -blockedDirection.x);
+        
+        if (IsPathClear(currentPos, perpendicular1, lookAheadDistance * 0.5f))
+            return perpendicular1;
+        if (IsPathClear(currentPos, perpendicular2, lookAheadDistance * 0.5f))
+            return perpendicular2;
+            
+        // Last resort: move backward
+        if (IsPathClear(currentPos, -blockedDirection, lookAheadDistance * 0.5f))
+            return -blockedDirection;
+            
+        return Vector2.zero;
+    }
+    
+    // ---------------- Stuck Detection ----------------
+    private void DetectStuck()
+    {
+        float distMoved = Vector3.Distance(transform.position, lastPosition);
+        
+        if (distMoved < stuckThreshold)
+        {
+            stuckTimer += Time.deltaTime;
+            
+            if (stuckTimer >= stuckTimeLimit)
+            {
+                // We're stuck! Take action
+                if (!isChasing)
+                {
+                    // Pick a new patrol point
+                    PickRandomPoint();
+                }
+                stuckTimer = 0f;
+            }
+        }
+        else
+        {
+            // Moving properly, reset timer
+            stuckTimer = 0f;
+        }
+        
+        lastPosition = transform.position;
     }
 
     // ---------------- Field of View Check ----------------
@@ -244,11 +419,26 @@ public class EnemyPatrol : MonoBehaviour
         Gizmos.DrawLine(transform.position, targetPoint);
         Gizmos.DrawSphere(targetPoint, 0.05f);
         
-        // Draw line to player when chasing
+        // Draw chase visualization
         if (isChasing && player != null)
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine(transform.position, player.transform.position);
+            if (lostSightTimer > 0f && hasPlayerInMemory)
+            {
+                // Chasing to last known position (lost sight but has memory)
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawLine(transform.position, lastKnownPlayerPosition);
+                Gizmos.DrawWireSphere(lastKnownPlayerPosition, 0.2f);
+                
+                // Also draw faded line to actual player position
+                Gizmos.color = new Color(1f, 0f, 0f, 0.3f); // Faded red
+                Gizmos.DrawLine(transform.position, player.transform.position);
+            }
+            else
+            {
+                // Can see player - direct chase
+                Gizmos.color = Color.red;
+                Gizmos.DrawLine(transform.position, player.transform.position);
+            }
         }
     }
 
