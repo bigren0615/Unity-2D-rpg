@@ -59,6 +59,7 @@ public class EnemyPatrol : MonoBehaviour
 
     // Combat state tracking
     private bool isInCombat = false;
+    private bool isDead = false; // Flag to prevent actions after death
 
     // Bubble tracking
     private bool hasPlayedSpottedSound = false;
@@ -91,6 +92,9 @@ public class EnemyPatrol : MonoBehaviour
 
     void Update()
     {
+        // Don't do anything if dead
+        if (isDead) return;
+
         // Try to find player again if lost reference
         if (player == null)
         {
@@ -659,6 +663,9 @@ public class EnemyPatrol : MonoBehaviour
     // Called when enemy takes damage
     public void TakeDamage(float damage)
     {
+        // Don't take damage if already dead
+        if (isDead) return;
+
         currentHealth -= damage;
         Debug.Log(gameObject.name + " took " + damage + " damage! Current HP: " + currentHealth + "/" + maxHealth);
 
@@ -677,6 +684,9 @@ public class EnemyPatrol : MonoBehaviour
 
     private void Die()
     {
+        if (isDead) return; // Prevent multiple calls
+        isDead = true;
+
         Debug.Log(gameObject.name + " has died!");
         
         // Exit combat when dying
@@ -684,11 +694,51 @@ public class EnemyPatrol : MonoBehaviour
         {
             ExitCombat();
         }
+
+        // Disable AI movement
+        speed = 0f;
+
+        // Disable colliders so player can't hit the corpse
+        Collider2D[] colliders = GetComponents<Collider2D>();
+        foreach (Collider2D col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        // Play death animation based on current facing direction
+        if (animator != null)
+        {
+            animator.SetTrigger("Dead");
+            
+            // Set movement parameters to maintain facing direction
+            animator.SetFloat("moveX", Mathf.Abs(facingDirection.x));
+            animator.SetFloat("moveY", facingDirection.y);
+
+            // Get the death animation length and destroy after it finishes
+            StartCoroutine(DestroyAfterAnimation());
+        }
+        else
+        {
+            // Fallback if no animator
+            Destroy(gameObject, 1f);
+        }
+    }
+
+    private IEnumerator DestroyAfterAnimation()
+    {
+        // Wait for the death animation to finish
+        // The animation will play based on the current moveX/moveY parameters
+        yield return new WaitForSeconds(0.1f); // Small delay to ensure animation starts
+
+        // Get current animation state info
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
         
-        // TODO: Play death animation
-        // TODO: Disable movement/AI
-        // For now, just destroy the object
-        Destroy(gameObject, 0.5f); // Small delay before destroying
+        // Wait for the current animation to finish
+        float animationLength = stateInfo.length;
+        yield return new WaitForSeconds(animationLength);
+
+        // Destroy the game object
+        Destroy(gameObject);
     }
 
     // Enter combat state
