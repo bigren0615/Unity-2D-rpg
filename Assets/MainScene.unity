@@ -1240,6 +1240,7 @@ MonoBehaviour:
   stuckTimeLimit: 1.5
   player: {fileID: 1098726794}
   suspenseBubblePrefab: {fileID: 1144519690394324439, guid: 86ad11769d1784b47a84fbd857e4f3f0, type: 3}
+  questionBubblePrefab: {fileID: 7665764381986480412, guid: b132d870663902e4c9f2f941a00da947, type: 3}
   bubbleOffset: {x: 0, y: 0.8, z: 0}
 --- !u!95 &1542459950
 Animator:

@@ -27,8 +27,9 @@ public class EnemyPatrol : MonoBehaviour
     [Header("References")]
     public GameObject player; // Assign manually or leave blank to auto-find by tag
     public GameObject suspenseBubblePrefab; // Drag the SuspenseBubble prefab here
+    public GameObject questionBubblePrefab; // Drag the QuestionBubble prefab here
 
-    [Header("Suspense Bubble Settings")]
+    [Header("Bubble Settings")]
     public Vector3 bubbleOffset = new Vector3(0f, 0.8f, 0f); // Offset above enemy's head
 
     private Vector3 startPosition;
@@ -62,8 +63,10 @@ public class EnemyPatrol : MonoBehaviour
     private float battleMusicDelay = 0f;
     private const float BATTLE_MUSIC_DELAY_TIME = 1.0f; // Delay after suspense sound
 
-    // Suspense bubble tracking
+    // Bubble tracking
     private GameObject currentSuspenseBubble = null;
+    private GameObject currentQuestionBubble = null;
+    private bool hasPlayedQuestionBubble = false;
 
     void Start()
     {
@@ -208,8 +211,9 @@ public class EnemyPatrol : MonoBehaviour
                 isBattleMusicPlaying = false;
             }
             
-            // Reset suspense flag when back to patrol
+            // Reset bubble flags when back to patrol
             hasPlayedSpottedSound = false;
+            hasPlayedQuestionBubble = false;
         }
 
         // Detect if stuck
@@ -249,6 +253,13 @@ public class EnemyPatrol : MonoBehaviour
         // Pick first search point
         PickRandomPoint(searchCenter, searchRadius);
         waiting = false;
+        
+        // Spawn question bubble when losing track of player
+        if (!hasPlayedQuestionBubble)
+        {
+            SpawnQuestionBubble();
+            hasPlayedQuestionBubble = true;
+        }
     }
 
     private void SearchForPlayer()
@@ -698,5 +709,53 @@ public class EnemyPatrol : MonoBehaviour
         // Wait a bit longer than the animation to ensure it's destroyed
         yield return new WaitForSeconds(2f);
         currentSuspenseBubble = null;
+    }
+
+    // ---------------- Question Bubble ----------------
+    private void SpawnQuestionBubble()
+    {
+        // Don't spawn if prefab is not assigned or bubble already exists
+        if (questionBubblePrefab == null || currentQuestionBubble != null)
+            return;
+
+        // Instantiate bubble above enemy's head
+        Vector3 spawnPosition = transform.position + bubbleOffset;
+        currentQuestionBubble = Instantiate(questionBubblePrefab, spawnPosition, Quaternion.identity, transform);
+
+        // Get the animator to determine animation length
+        Animator bubbleAnimator = currentQuestionBubble.GetComponent<Animator>();
+        if (bubbleAnimator != null && bubbleAnimator.runtimeAnimatorController != null)
+        {
+            // Play animation from the start
+            AnimationClip[] clips = bubbleAnimator.runtimeAnimatorController.animationClips;
+            if (clips.Length > 0)
+            {
+                bubbleAnimator.Play(clips[0].name, 0, 0f);
+
+                // Destroy after animation completes
+                float clipLength = clips[0].length;
+                Destroy(currentQuestionBubble, clipLength);
+            }
+            else
+            {
+                // Fallback: destroy after 1 second if no animation clip found
+                Destroy(currentQuestionBubble, 1f);
+            }
+        }
+        else
+        {
+            // Fallback: destroy after 1 second if no animator found
+            Destroy(currentQuestionBubble, 1f);
+        }
+
+        // Clear reference after destroying (with a slight delay to account for destroy time)
+        StartCoroutine(ClearQuestionBubbleReference());
+    }
+
+    private IEnumerator ClearQuestionBubbleReference()
+    {
+        // Wait a bit longer than the animation to ensure it's destroyed
+        yield return new WaitForSeconds(2f);
+        currentQuestionBubble = null;
     }
 }
