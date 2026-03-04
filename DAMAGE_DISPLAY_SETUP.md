@@ -67,13 +67,17 @@ Three new scripts have been added to your project:
 
 6. **Configure DamageText Component Settings (Optional):**
    - **Float Speed:** 1.5 (how fast text moves up)
-   - **Lifetime:** 1.2 seconds (how long the text stays visible)
+   - **Lifetime:** 1.0 seconds (total time visible - ZZZ style is quick!)
    - **Scale In Time:** 0.15 seconds (punch-in animation)
-   - **Fade Out Time:** 0.4 seconds (fade duration)
+   - **Fade Out Time:** 0.25 seconds (fast fade for snappy feel - fully adjustable!)
    - **Start Scale:** 0.5 (initial size)
    - **Peak Scale:** 1.3 (punch effect peak)
    - **End Scale:** 1.0 (final size)
    - **Horizontal Drift Range:** 0.3 (random side-to-side movement)
+   - **Outline Settings:**
+     - **Enable Outline:** ✓ Checked (recommended for visibility)
+     - **Outline Color:** RGB(26, 13, 0) or #1A0D00 (dark brown/black)
+     - **Outline Width:** 0.2 (adjust 0.1-0.3 for thinner/thicker border)
 
 7. **Make it a Prefab:**
    - Drag the `DamageText` GameObject from Hierarchy into your `Assets/Prefab` folder
@@ -156,9 +160,23 @@ Edit the gradient colors in **DamageTextManager** (ZZZ uses top-to-bottom gradie
 
 Edit these values in the **DamageText** component on your prefab:
 - **Float Speed:** How fast numbers rise (1.5 = moderate, 2.5 = fast)
-- **Lifetime:** How long they stay (1.2 = quick, 2.0 = longer)
+- **Lifetime:** How long they stay (1.0 = quick ZZZ style, 2.0 = longer)
+- **Fade Out Time:** How fast they disappear (0.25 = snappy, 0.5 = gradual)
 - **Peak Scale:** Size punch effect (1.3 = subtle, 1.8 = dramatic)
 - **Horizontal Drift:** Side movement (0.3 = subtle, 0.8 = more random)
+
+### Customize Outline/Border
+
+Edit these values in the **DamageText** component on your prefab:
+- **Enable Outline:** Check/uncheck to toggle border
+- **Outline Color:** 
+  - Black (0,0,0) for maximum contrast
+  - Dark brown (#1A0D00) for warmer feel
+  - Dark red (#330000) for aggressive style
+- **Outline Width:** 
+  - 0.1 = Thin, subtle outline
+  - 0.2 = Medium (recommended)
+  - 0.3-0.5 = Thick, bold outline
 
 ### Font Customization
 
@@ -201,10 +219,13 @@ DamageTextManager.Instance.ShowDamage(damage, enemyPosition, isCritical);
 - For **3D games**, you may need to adjust the TextMeshPro settings or use TextMeshPro - Text (UI) with a Canvas
 - The **Zenless Zone Zero style** features:
   - Smooth pop-up animations with scale punch effect
-  - Bright yellow **gradient colors** (light to dark, top to bottom)
+  - **DIAGONAL gradient** from upper-left (bright) to bottom-right (dark)
+  - Bright yellow gradient colors with smooth interpolation
   - Pixel-perfect **m5x7 font** for retro aesthetic
+  - **Customizable outline/border** for better readability
+  - **Fast fade out** (0.25s default) for snappy, responsive feel
   - Floating upward movement with subtle horizontal drift
-- **Gradient is applied at runtime** - the DamageText script automatically creates a vertical gradient from top color to bottom color
+- **Gradient is diagonal** - goes from top-left corner (bright) to bottom-right corner (dark) with smooth interpolation
 
 ---
 
@@ -231,9 +252,27 @@ DamageTextManager.Instance.ShowDamage(damage, enemyPosition, isCritical);
 ### I don't see the gradient effect!
 
 1. The gradient is applied **at runtime** by the script
-2. Check that DamageText.cs and DamageTextManager.cs are updated with gradient support
+2. Check that DamageText.cs is updated with **diagonal gradient** support
 3. In Play Mode, select a damage text object and check the TextMeshPro component - you should see "Enable Vertex Gradient" is ON
-4. Make sure you're using the updated scripts (they should have `Show()` method with topColor and bottomColor parameters)
+4. The gradient should go from **upper-left (bright)** to **bottom-right (dark)** with smooth interpolation
+5. Make sure you're using the updated scripts (they should have diagonal gradient calculation)
+
+### I don't see the outline/border!
+
+1. Check that **Enable Outline** is checked in the DamageText component
+2. Make sure **Outline Width** is not 0 (try 0.2)
+3. Verify **Outline Color** has visible contrast (try black: RGB 0,0,0)
+4. The outline is applied to the TextMeshPro material at runtime
+5. If using a custom TMP material, ensure it supports outlines (SDF materials do)
+
+### The fade is too slow/fast!
+
+1. Adjust **Fade Out Time** in DamageText component:
+   - 0.15s = Very fast, instant disappear
+   - 0.25s = Fast, snappy (ZZZ default)
+   - 0.4s = Medium
+   - 0.6s+ = Slow, gradual fade
+2. Also check **Lifetime** - total time before fade starts
 
 ### The font looks blurry!
 
@@ -254,10 +293,11 @@ DamageTextManager.Instance.ShowDamage(damage, enemyPosition, isCritical);
 Your damage display is now set up in Zenless Zone Zero style! The bright yellow **gradient damage numbers** with the **m5x7 pixel font** will pop up whenever enemies take damage, adding visual feedback to your combat system.
 
 ### Quick Visual Check:
-- ✅ Numbers should be **yellow gradient** (bright at top, gold at bottom)
+- ✅ Numbers should be **diagonal gradient** (bright yellow top-left, deep gold bottom-right)
+- ✅ Numbers should have a **visible outline/border** (dark color for contrast)
 - ✅ Numbers should use **m5x7 pixel font** (retro/crispy look)
 - ✅ Numbers should **float upward** with a pop/punch animation
-- ✅ Numbers should **fade out** smoothly at the end
+- ✅ Numbers should **fade out quickly** (0.25s - snappy ZZZ feel)
 
 For questions or issues, check the Unity Console for detailed error messages.
 

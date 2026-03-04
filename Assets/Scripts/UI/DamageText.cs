@@ -14,13 +14,24 @@ public class DamageText : MonoBehaviour
     public float floatSpeed = 1.5f;
     
     [Tooltip("Total lifetime of the damage text")]
-    public float lifetime = 1.2f;
+    public float lifetime = 1.0f;
     
     [Tooltip("Time to scale in at the start")]
     public float scaleInTime = 0.15f;
     
-    [Tooltip("Time to fade out at the end")]
-    public float fadeOutTime = 0.4f;
+    [Tooltip("Time to fade out at the end (ZZZ style is quick)")]
+    public float fadeOutTime = 0.25f;
+    
+    [Header("Outline/Border Settings")]
+    [Tooltip("Enable outline/border for better visibility")]
+    public bool enableOutline = true;
+    
+    [Tooltip("Outline color (usually black or dark for contrast)")]
+    public Color outlineColor = new Color(0.1f, 0.05f, 0f, 1f); // Dark brown/black
+    
+    [Tooltip("Outline thickness (0.1-0.3 recommended)")]
+    [Range(0f, 1f)]
+    public float outlineWidth = 0.2f;
     
     [Header("Scale Animation")]
     [Tooltip("Starting scale (punch in effect)")]
@@ -56,17 +67,29 @@ public class DamageText : MonoBehaviour
     }
 
     /// <summary>
-    /// Initialize and display damage text with optional gradient
+    /// Initialize and display damage text with diagonal gradient (upper left to bottom right)
     /// </summary>
     public void Show(float damageAmount, Vector3 worldPosition, Color topColor, Color bottomColor)
     {
         // Set text
         textMesh.text = Mathf.RoundToInt(damageAmount).ToString();
         
-        // Apply gradient (ZZZ style)
+        // Apply DIAGONAL gradient (ZZZ style - upper left to bottom right)
         textMesh.enableVertexGradient = true;
-        textMesh.colorGradient = new VertexGradient(topColor, topColor, bottomColor, bottomColor);
+        
+        // Calculate interpolated colors for smooth diagonal gradient
+        Color topRight = Color.Lerp(topColor, bottomColor, 0.33f);    // 1/3 blend
+        Color bottomLeft = Color.Lerp(topColor, bottomColor, 0.67f);  // 2/3 blend
+        
+        textMesh.colorGradient = new VertexGradient(topColor, topRight, bottomLeft, bottomColor);
         originalColor = topColor; // Use top color for fade calculations
+        
+        // Apply outline/border settings
+        if (enableOutline && textMesh.fontMaterial != null)
+        {
+            textMesh.fontMaterial.SetColor("_OutlineColor", outlineColor);
+            textMesh.fontMaterial.SetFloat("_OutlineWidth", outlineWidth);
+        }
         
         // Set position
         transform.position = worldPosition;
