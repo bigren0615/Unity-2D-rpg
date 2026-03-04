@@ -72,6 +72,12 @@ public class EnemyHealth : MonoBehaviour
         currentHealth -= damage;
         Debug.Log(gameObject.name + " took " + damage + " damage! Current HP: " + currentHealth + "/" + maxHealth);
 
+        // Show damage text (ZZZ style)
+        if (DamageTextManager.Instance != null)
+        {
+            DamageTextManager.Instance.ShowDamage(damage, transform.position);
+        }
+
         UpdateHealthBar();
 
         if (!isFlashing)
