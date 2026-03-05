@@ -162,12 +162,7 @@ public class EnemyController : MonoBehaviour
                 animator.SetFloat("moveY", moveDirection.y);
                 animator.SetBool("isAttacking", isAttacking);
             }
-            else
-            {
-                // Combat system is controlling attacks - it sets moveX/moveY for attack direction
-                // Only update isAttacking parameter
-                Debug.Log($"{gameObject.name}: UpdateAnimation skipping override - combat system controls direction");
-            }
+            // Combat system is controlling attacks - skip all parameter updates
             
             animator.SetBool("isDead", isDead);
         }
@@ -192,12 +187,14 @@ public class EnemyController : MonoBehaviour
     /// </summary>
     public void Stop()
     {
-        // Don't override animation if combat system is handling attacks
-        bool isCurrentlyAttacking = enemyCombat != null && enemyCombat.IsAttacking();
+        // Don't touch animator at all if combat system is actively attacking
+        // Let combat system have full control
+        if (enemyCombat != null && enemyCombat.IsAttacking())
+            return;
         
         // Use current facing direction when stopped to preserve animator direction
         // This prevents the animator from defaulting to down direction
-        UpdateAnimation(facingDirection, isCurrentlyAttacking, false);
+        UpdateAnimation(facingDirection, false, false);
     }
 
     /// <summary>

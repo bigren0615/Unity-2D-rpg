@@ -105,11 +105,16 @@ public class EnemyCombat : MonoBehaviour
         }
 
         // If in combat mode and player is in attack range, attack
-        // Check if no attack is in progress (attackCoroutine == null prevents restarting)
+        // Multiple safety checks to prevent overlapping attacks:
+        // 1. Must be in combat mode
+        // 2. Must NOT be currently attacking (isAttacking = false)
+        // 3. Must have waited for cooldown (Time.time >= nextAttackTime)
+        // 4. Must not have an attack sequence in progress (attackCoroutine = null)
         if (isInCombatMode && !isAttacking && Time.time >= nextAttackTime && attackCoroutine == null)
         {
             if (distanceToPlayer <= attackHitboxRadius)
             {
+                Debug.Log($"{gameObject.name}: Starting new attack sequence. Current time: {Time.time:F2}, Next attack time: {nextAttackTime:F2}");
                 StartAttackSequence();
             }
         }
@@ -196,8 +201,8 @@ public class EnemyCombat : MonoBehaviour
         // Execute attack
         ExecuteAttack();
         
-        // Set next attack time
-        nextAttackTime = Time.time + Random.Range(minAttackInterval, maxAttackInterval);
+        // DON'T set nextAttackTime here - let AttackEnd() do it after animation completes
+        // This prevents new attacks from starting before current attack finishes
         
         attackCoroutine = null;
     }
@@ -218,8 +223,17 @@ public class EnemyCombat : MonoBehaviour
         isAttacking = true;
         hasHitPlayerThisAttack = false;
         
-        // Store the facing direction for the attack
-        attackDirection = controller.GetFacingDirection();
+        // Calculate direction TO PLAYER for the attack (not just current facing)
+        if (player != null)
+        {
+            Vector2 directionToPlayer = (player.transform.position - transform.position).normalized;
+            attackDirection = directionToPlayer;
+        }
+        else
+        {
+            // Fallback to current facing direction if player is null
+            attackDirection = controller.GetFacingDirection();
+        }
         
         // Update animator with attack direction
         UpdateAnimatorForAttack();
@@ -228,19 +242,13 @@ public class EnemyCombat : MonoBehaviour
         // Lock sprite flip to attack direction
         controller.FlipSprite(attackDirection);
         
-        Debug.Log($"{gameObject.name}: Executing attack! Direction: {attackDirection}, isAttacking set to TRUE");
-        
-        // Debug: Check animator state
-        if (animator != null)
-        {
-            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            Debug.Log($"{gameObject.name}: Current animator state: {stateInfo.fullPathHash}, IsName('Attack'): {stateInfo.IsName("Attack")}");
-            Debug.Log($"{gameObject.name}: Animator parameters - moveX: {animator.GetFloat("moveX")}, moveY: {animator.GetFloat("moveY")}, isAttacking: {animator.GetBool("isAttacking")}");
-        }
+        Debug.Log($"{gameObject.name}: ========== ATTACK START ==========");
+        Debug.Log($"{gameObject.name}: Direction TO PLAYER: {attackDirection}");
+        Debug.Log($"{gameObject.name}: Setting animator - moveX: {Mathf.Abs(attackDirection.x)}, moveY: {attackDirection.y}, isAttacking: TRUE");
         
         // Safety failsafe: If animation events aren't set up, reset after animation length
         // This prevents getting stuck in attacking state
-        StartCoroutine(AttackFailsafe(2f)); // 2 second failsafe
+        StartCoroutine(AttackFailsafe(3f)); // 3 second failsafe (increased from 2)
     }
     
     /// <summary>
@@ -289,7 +297,12 @@ public class EnemyCombat : MonoBehaviour
     /// </summary>
     public void AttackStart()
     {
+        // Guard against duplicate events (check if already attacking)
+        if (!isAttacking)
+            return;
+            
         hasHitPlayerThisAttack = false;
+        Debug.Log($"{gameObject.name}: AttackStart event fired!");
     }
 
     /// <summary>
@@ -297,6 +310,8 @@ public class EnemyCombat : MonoBehaviour
     /// </summary>
     public void AttackHit()
     {
+        Debug.Log($"{gameObject.name}: AttackHit event fired!");
+        
         if (hasHitPlayerThisAttack)
             return;
         
@@ -318,6 +333,10 @@ public class EnemyCombat : MonoBehaviour
             //     playerHealth.TakeDamage(attackDamage);
             // }
         }
+        else
+        {
+            Debug.Log($"{gameObject.name}: Attack missed - player too far (Distance: {distanceToPlayer:F2})");
+        }
     }
 
     /// <summary>
@@ -325,9 +344,18 @@ public class EnemyCombat : MonoBehaviour
     /// </summary>
     public void AttackEnd()
     {
-        Debug.Log($"{gameObject.name}: Attack ended! isAttacking set to FALSE");
+        // Guard against duplicate events
+        if (!isAttacking)
+            return;
+            
+        Debug.Log($"{gameObject.name}: AttackEnd event fired! isAttacking set to FALSE");
         isAttacking = false;
         UpdateAnimatorAttackState(false);
+        
+        // Set next attack time AFTER animation completes
+        // This ensures the cooldown only starts after the current attack fully finishes
+        nextAttackTime = Time.time + Random.Range(minAttackInterval, maxAttackInterval);
+        Debug.Log($"{gameObject.name}: Next attack allowed at: {nextAttackTime:F2} (current time: {Time.time:F2})");
     }
     
     /// <summary>

@@ -98,11 +98,17 @@ public class EnemyAI : MonoBehaviour
         {
             // Check if enemy is in combat mode (attacking at close range)
             bool inCombatMode = combat != null && combat.IsInCombatMode();
+            bool isAttacking = combat != null && combat.IsAttacking();
             
             if (inCombatMode)
             {
-                // In combat mode - stop moving and let combat system handle attacks
-                controller.Stop();
+                // In combat mode - but only call Stop() if not actively attacking
+                // This prevents interference with attack animations
+                if (!isAttacking)
+                {
+                    controller.Stop();
+                }
+                // If attacking, don't call anything - let combat system handle it completely
             }
             else
             {
