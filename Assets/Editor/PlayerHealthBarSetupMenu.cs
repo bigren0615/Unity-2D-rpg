@@ -87,7 +87,21 @@ public class PlayerHealthBarSetupMenu
         bgImage.color = new Color(0.1f, 0.1f, 0.1f, 0.9f); // Dark background
         bgImage.sprite = CreateWhiteSprite();
 
-        // Create fill image
+        // Create border/box image (must be before Fill so Fill renders on top)
+        GameObject box = new GameObject("Box");
+        box.transform.SetParent(healthBarContainer.transform, false);
+        RectTransform boxRect = box.AddComponent<RectTransform>();
+        boxRect.anchorMin = Vector2.zero;
+        boxRect.anchorMax = Vector2.one;
+        boxRect.sizeDelta = Vector2.zero;
+        boxRect.anchoredPosition = Vector2.zero;
+        
+        Image boxImage = box.AddComponent<Image>();
+        boxImage.color = Color.white; // White to show sprite's native color
+        boxImage.sprite = CreateWhiteSprite();
+        boxImage.type = Image.Type.Sliced;
+
+        // Create fill image (must be after Box so it renders on top)
         GameObject fill = new GameObject("Fill");
         fill.transform.SetParent(healthBarContainer.transform, false);
         RectTransform fillRect = fill.AddComponent<RectTransform>();
@@ -103,20 +117,6 @@ public class PlayerHealthBarSetupMenu
         fillImage.fillMethod = Image.FillMethod.Horizontal;
         fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
         fillImage.fillAmount = 1f;
-
-        // Create border/box image
-        GameObject box = new GameObject("Box");
-        box.transform.SetParent(healthBarContainer.transform, false);
-        RectTransform boxRect = box.AddComponent<RectTransform>();
-        boxRect.anchorMin = Vector2.zero;
-        boxRect.anchorMax = Vector2.one;
-        boxRect.sizeDelta = Vector2.zero;
-        boxRect.anchoredPosition = Vector2.zero;
-        
-        Image boxImage = box.AddComponent<Image>();
-        boxImage.color = Color.white; // White to show sprite's native color
-        boxImage.sprite = CreateWhiteSprite();
-        boxImage.type = Image.Type.Sliced;
         
         // Add the PlayerHealthBarUI component
         PlayerHealthBarUI healthBarUI = healthBarContainer.AddComponent<PlayerHealthBarUI>();
@@ -124,6 +124,15 @@ public class PlayerHealthBarSetupMenu
         healthBarUI.healthBarFill = fillImage;
         healthBarUI.healthBarBox = boxImage;
         healthBarUI.useNativeSpriteColors = true; // Enable by default to prevent black bar issue
+        
+        // Set default fill padding (adjustable in inspector)
+        healthBarUI.fillPaddingLeft = 2f;
+        healthBarUI.fillPaddingRight = 2f;
+        healthBarUI.fillPaddingTop = 2f;
+        healthBarUI.fillPaddingBottom = 2f;
+        
+        // Apply the padding settings
+        healthBarUI.ApplySizeAndPosition();
 
         // Select the created object
         Selection.activeGameObject = healthBarContainer;
@@ -137,6 +146,7 @@ public class PlayerHealthBarSetupMenu
         Debug.Log("Configure in Inspector:");
         Debug.Log("  - Adjust 'Health Bar Width' and 'Health Bar Height' to resize");
         Debug.Log("  - Adjust 'Padding Left' and 'Padding Top' to reposition");
+        Debug.Log("  - Adjust 'Fill Padding' values to control spacing from box border");
         Debug.Log("  - Assign custom sprites to Background, Fill, and Box child objects");
         Debug.Log("  - Each child has an Image component - set its 'Source Image' field");
         Debug.Log("");

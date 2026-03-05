@@ -32,6 +32,19 @@ public class PlayerHealthBarUI : MonoBehaviour
     [Tooltip("Padding from the top edge of the screen (in pixels)")]
     public float paddingTop = 20f;
 
+    [Header("Fill Padding (Space for Box Border)")]
+    [Tooltip("Inset from left edge so box border is visible (in pixels)")]
+    public float fillPaddingLeft = 2f;
+    
+    [Tooltip("Inset from right edge so box border is visible (in pixels)")]
+    public float fillPaddingRight = 2f;
+    
+    [Tooltip("Inset from top edge so box border is visible (in pixels)")]
+    public float fillPaddingTop = 2f;
+    
+    [Tooltip("Inset from bottom edge so box border is visible (in pixels)")]
+    public float fillPaddingBottom = 2f;
+
     [Header("Health Bar Settings")]
     [Tooltip("Use sprite's original colors instead of color tinting. Enable this if you have custom colored sprites!")]
     public bool useNativeSpriteColors = false;
@@ -140,6 +153,20 @@ public class PlayerHealthBarUI : MonoBehaviour
             
             // Set position with padding
             rectTransform.anchoredPosition = new Vector2(paddingLeft, -paddingTop);
+        }
+
+        // Apply fill padding so it doesn't cover the box border
+        if (healthBarFill != null)
+        {
+            RectTransform fillRect = healthBarFill.GetComponent<RectTransform>();
+            if (fillRect != null)
+            {
+                // Fill should stretch to fill parent but with padding
+                fillRect.anchorMin = Vector2.zero;
+                fillRect.anchorMax = Vector2.one;
+                fillRect.offsetMin = new Vector2(fillPaddingLeft, fillPaddingBottom);
+                fillRect.offsetMax = new Vector2(-fillPaddingRight, -fillPaddingTop);
+            }
         }
     }
 
