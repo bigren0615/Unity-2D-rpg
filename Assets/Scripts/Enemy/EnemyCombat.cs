@@ -180,8 +180,9 @@ public class EnemyCombat : MonoBehaviour
             yield return new WaitForSeconds(delayBeforeReady);
         }
         
-        // Once attack sequence starts, commit to it completely
-        // Only cancel if enemy dies or player is destroyed
+        // Once attack sequence starts, FULLY COMMIT to it
+        // NO CANCELLATION except for death or destroyed player
+        // This ensures attack animations always complete once started
         if (health != null && health.IsDead())
         {
             attackCoroutine = null;
