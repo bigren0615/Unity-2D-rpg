@@ -335,12 +335,16 @@ public class EnemyCombat : MonoBehaviour
             hasHitPlayerThisAttack = true;
             Debug.Log($"{gameObject.name}: Enemy hit player! (Distance: {distanceToPlayer:F2})");
             
-            // TODO: Deal damage to player when player health system is implemented
-            // PlayerHealth playerHealth = player.GetComponent<PlayerHealth>();
-            // if (playerHealth != null)
-            // {
-            //     playerHealth.TakeDamage(attackDamage);
-            // }
+            // Deal damage to player
+            PlayerHealth playerHealth = player.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(attackDamage);
+            }
+            else
+            {
+                Debug.LogWarning($"{gameObject.name}: Player doesn't have PlayerHealth component!");
+            }
         }
         else
         {
