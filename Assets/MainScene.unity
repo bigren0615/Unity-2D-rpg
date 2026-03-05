@@ -4133,15 +4133,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3659223117675410726, guid: 213f8af1a1b620b4bb84bf627859aa75, type: 3}
       propertyPath: maxAttackInterval
-      value: 0.5
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 3659223117675410726, guid: 213f8af1a1b620b4bb84bf627859aa75, type: 3}
       propertyPath: minAttackInterval
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3659223117675410726, guid: 213f8af1a1b620b4bb84bf627859aa75, type: 3}
+      propertyPath: attackHitboxRadius
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3659223117675410726, guid: 213f8af1a1b620b4bb84bf627859aa75, type: 3}
       propertyPath: readyAttackWarningTime
-      value: 0.5
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 6950652095260096320, guid: 213f8af1a1b620b4bb84bf627859aa75, type: 3}
       propertyPath: speed

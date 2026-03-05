@@ -99,9 +99,10 @@ public class EnemyCombat : MonoBehaviour
             EnterCombatMode();
         }
         // Exit combat mode if player leaves combat range
-        // BUT: Don't exit if attack sequence is in progress (either preparing or executing)
+        // Note: We wait for attacks to finish before exiting, but attacks are NEVER cancelled
         // - attackCoroutine != null: attack sequence preparing (ready warning phase)
         // - isAttacking = true: attack animation executing
+        // Once an attack starts, it will complete regardless of player distance
         else if (isInCombatMode && distanceToPlayer > combatModeRadius && !isAttacking && attackCoroutine == null)
         {
             ExitCombatMode();
@@ -137,24 +138,15 @@ public class EnemyCombat : MonoBehaviour
 
     /// <summary>
     /// Exit combat mode and return to chase mode
+    /// ATTACKS ARE NEVER CANCELLED - once started, they always complete
     /// </summary>
     private void ExitCombatMode()
     {
         isInCombatMode = false;
         
-        // Don't cancel attack if already executing (isAttacking = true)
-        // Let the attack complete naturally via animation events
-        if (!isAttacking && attackCoroutine != null)
-        {
-            StopCoroutine(attackCoroutine);
-            attackCoroutine = null;
-        }
-        
-        // Only reset isAttacking if not currently in an attack animation
-        if (!isAttacking)
-        {
-            UpdateAnimatorAttackState(false);
-        }
+        // Attacks cannot be interrupted once they start
+        // Even if player moves away, the attack sequence will complete naturally
+        // No cancellation logic here - let animation events handle the full lifecycle
     }
 
     /// <summary>
