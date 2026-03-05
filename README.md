@@ -31,9 +31,8 @@
 | Move Down | `S` / `↓` |
 | Move Left | `A` / `←` |
 | Move Right | `D` / `→` |
-| Attack | `Left Mouse Button` |
-| Dash / Dodge | `Space` |
-| Interact | `E` |
+| Attack | `Left Mouse Button` / `Z` |
+| Dash / Dodge | `Right Mouse Button` |
 
 ---
 
@@ -63,7 +62,7 @@ Total Completion  ████████████████░░░░  
 - Physics-driven movement using Rigidbody2D
 - Top-down environment with floor and nature tilesets
 - Basic melee attack system with hitbox detection
-- Dash / dodge mechanic with cooldown
+- Dash mechanic with cooldown
 - Goblin enemy with patrol, chase, and attack AI
 - Emotion bubble system (! alert, ? suspense)
 - Ambient and battle background music
