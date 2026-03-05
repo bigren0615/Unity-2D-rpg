@@ -99,8 +99,10 @@ public class EnemyCombat : MonoBehaviour
             EnterCombatMode();
         }
         // Exit combat mode if player leaves combat range
-        // BUT: Don't exit if currently attacking - enemy must finish attack first
-        else if (isInCombatMode && distanceToPlayer > combatModeRadius && !isAttacking)
+        // BUT: Don't exit if attack sequence is in progress (either preparing or executing)
+        // - attackCoroutine != null: attack sequence preparing (ready warning phase)
+        // - isAttacking = true: attack animation executing
+        else if (isInCombatMode && distanceToPlayer > combatModeRadius && !isAttacking && attackCoroutine == null)
         {
             ExitCombatMode();
         }
@@ -178,8 +180,15 @@ public class EnemyCombat : MonoBehaviour
             yield return new WaitForSeconds(delayBeforeReady);
         }
         
-        // Check if still in combat mode before warning
-        if (!isInCombatMode)
+        // Once attack sequence starts, commit to it completely
+        // Only cancel if enemy dies or player is destroyed
+        if (health != null && health.IsDead())
+        {
+            attackCoroutine = null;
+            yield break;
+        }
+        
+        if (player == null)
         {
             attackCoroutine = null;
             yield break;
@@ -191,9 +200,15 @@ public class EnemyCombat : MonoBehaviour
         // Wait remaining time before actual attack
         yield return new WaitForSeconds(readyAttackWarningTime);
         
-        // Check if still in combat before executing attack
-        // Once we get here, we commit to the attack regardless of distance
-        if (!isInCombatMode)
+        // Final check before executing attack - only for death/null player
+        // Don't check combat mode - attack is already committed!
+        if (health != null && health.IsDead())
+        {
+            attackCoroutine = null;
+            yield break;
+        }
+        
+        if (player == null)
         {
             attackCoroutine = null;
             yield break;
