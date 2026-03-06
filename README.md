@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚔️ Gravepulse
+# ⚔️ Gravepulse (WORK IN PROGRESS)
 
 ### *2D Top-Down Real-Time Action RPG*
 
