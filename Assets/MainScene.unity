@@ -203,6 +203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d16f27715b55a543ab10e9bc2a61ef5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  hitstopZoomFactor: 0.82
 --- !u!4 &238343886
 Transform:
   m_ObjectHideFlags: 0
@@ -1347,6 +1348,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   showAttackDebug: 1
+  parryImpactDelay: 0.1
+  parrySparkOffset: 0.5
 --- !u!50 &1098726797
 Rigidbody2D:
   serializedVersion: 5
@@ -1419,9 +1422,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 2
+  m_SortingLayerID: -470734081
+  m_SortingLayer: 2
+  m_SortingOrder: 3
   m_MaskInteraction: 0
   m_Sprite: {fileID: -1551639366, guid: c8e1c7c4e53d6264cacad341d2082bf4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -1627,7 +1630,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2292ae75db7158449a8382d6c3ddce09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 100
+  maxHealth: 1000
   damageFlashColor: {r: 1, g: 0, b: 0, a: 1}
   flashDuration: 0.1
   flashCount: 2

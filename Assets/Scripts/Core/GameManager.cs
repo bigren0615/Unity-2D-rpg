@@ -34,6 +34,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("Camera zoom factor during parry hitstop. 0.82 = 18% zoom in. Lower = more dramatic.")]
     public float hitstopZoomFactor = 0.82f;
     private float hitstopOriginalSize;
+    private bool _hitstopActive = false; // True while a hitstop is in progress — prevents re-capturing a zoomed camera size as the "original"
 
     /// <summary>
     /// Parry hitstop: ZZZ-style camera punch zoom.
@@ -54,7 +55,14 @@ public class GameManager : MonoBehaviour
         Camera cam = Camera.main;
         if (cam == null) { hitstopCoroutine = null; yield break; }
 
-        hitstopOriginalSize = cam.orthographicSize;
+        // Only capture the true base size when we're NOT already mid-hitstop.
+        // If TriggerHitstop fires twice in the same frame (fallback coroutine + animation event
+        // both at t=0.1s), the second call must reuse the already-saved base — reading
+        // cam.orthographicSize here would capture a half-zoomed value and compound the zoom.
+        if (!_hitstopActive)
+            hitstopOriginalSize = cam.orthographicSize;
+        _hitstopActive = true;
+
         float targetSize = hitstopOriginalSize * hitstopZoomFactor;
 
         // ── Phase 1: Snap zoom in (explosive punch, ~0.04s real time) ──
@@ -90,6 +98,7 @@ public class GameManager : MonoBehaviour
             yield return null;
         }
         cam.orthographicSize = hitstopOriginalSize;
+        _hitstopActive = false;
         hitstopCoroutine = null;
     }
 

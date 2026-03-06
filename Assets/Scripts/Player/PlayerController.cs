@@ -59,6 +59,10 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Seconds (real-time) after parry input before hitstop+SFX fires. Tune to match the clash frame of your Parry animation. Set to 0 once you wire the ParryImpact animation event.")]
     [SerializeField] private float parryImpactDelay = 0.1f;
 
+    [Header("Parry Spark VFX")]
+    [Tooltip("How far in front of the player (along attackDir) the spark spawns — tune to sit at the weapon tip.")]
+    [SerializeField] private float parrySparkOffset = 0.5f;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -399,6 +403,11 @@ public class PlayerController : MonoBehaviour
             parryHitstopCoroutine = null;
         }
         AudioManager.Instance?.PlaySFX(SFXType.Clash);
+
+        // Spawn sparkle BEFORE hitstop so it appears on the exact freeze frame
+        Vector3 spawnPos = transform.position + (Vector3)(attackDir.normalized * parrySparkOffset);
+        ParrySparkEffect.Spawn(spawnPos, attackDir, spriteRenderer);
+
         GameManager.Instance?.TriggerHitstop();
     }
 
