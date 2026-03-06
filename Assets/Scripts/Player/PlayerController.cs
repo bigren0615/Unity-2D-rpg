@@ -53,6 +53,9 @@ public class PlayerController : MonoBehaviour
     private Coroutine afterimageCoroutine;
     private bool wasInVitalView;
 
+    // ---- Parry ----
+    private Coroutine parryFacingCoroutine;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -170,11 +173,12 @@ public class PlayerController : MonoBehaviour
 
         animator.SetBool("isMoving", isMoving);
 
-        // Check if we're currently in the Attack state (any layer, but typically layer 0)
+        // Check if we're currently in the Attack or Parry state (any layer, but typically layer 0)
         bool isInAttackState = animator.GetCurrentAnimatorStateInfo(0).IsName("Attack");
+        bool isInParryState  = animator.GetCurrentAnimatorStateInfo(0).IsName("Parry");
 
-        // Keep using attackDir if we're locked OR still in attack state
-        if (facingLocked || isInAttackState)
+        // Keep using attackDir if we're locked OR still in attack/parry state
+        if (facingLocked || isInAttackState || isInParryState)
         {
             animator.SetFloat("moveX", Mathf.Abs(attackDir.x));
             animator.SetFloat("moveY", attackDir.y);
@@ -304,11 +308,38 @@ public class PlayerController : MonoBehaviour
             {
                 if (ec.TryParry())
                 {
-                    // Successful parry!
+                    // Snap to the cardinal direction toward the attacking enemy
+                    // so the correct directional Parry clip plays from the first frame
+                    Vector2 raw = (ec.transform.position - transform.position).normalized;
+                    Vector2 parryDir = Mathf.Abs(raw.x) >= Mathf.Abs(raw.y)
+                        ? new Vector2(Mathf.Sign(raw.x), 0f)
+                        : new Vector2(0f, Mathf.Sign(raw.y));
+
+                    // Lock facing toward the attacker (mirrors how AttackStart works)
+                    attackDir   = parryDir;
+                    lastMoveDir = parryDir;
+                    facingLocked = true;
+
+                    // Flip sprite immediately before the trigger fires
+                    if (parryDir.x > 0f)
+                        spriteRenderer.flipX = true;
+                    else if (parryDir.x < 0f)
+                        spriteRenderer.flipX = false;
+
+                    // Push blend-tree params so the Parry state reads them from frame 1
+                    animator.SetFloat("moveX", Mathf.Abs(parryDir.x));
+                    animator.SetFloat("moveY", parryDir.y);
+                    animator.SetTrigger("Parry");
+
                     AudioManager.Instance?.PlaySFX(SFXType.Clash);
                     GameManager.Instance?.TriggerHitstop();
-                    animator.SetTrigger("Parry"); // Requires "Parry" trigger wired in Player Animator
-                    Debug.Log("[Parry] SUCCESS!");
+
+                    // Failsafe: release facing lock after 1s real-time in case
+                    // ParryEnd animation event is not yet configured
+                    if (parryFacingCoroutine != null) StopCoroutine(parryFacingCoroutine);
+                    parryFacingCoroutine = StartCoroutine(ParryFacingFailsafe(1f));
+
+                    Debug.Log($"[Parry] SUCCESS! Facing: {parryDir}");
                     return;
                 }
             }
@@ -335,6 +366,25 @@ public class PlayerController : MonoBehaviour
     public void AttackEnd()
     {
         facingLocked = false;
+    }
+
+    // Called by animation event at the end of the Parry animation
+    public void ParryEnd()
+    {
+        if (parryFacingCoroutine != null)
+        {
+            StopCoroutine(parryFacingCoroutine);
+            parryFacingCoroutine = null;
+        }
+        facingLocked = false;
+    }
+
+    // Real-time failsafe so facing is never stuck if ParryEnd event isn't wired yet
+    private IEnumerator ParryFacingFailsafe(float duration)
+    {
+        yield return new WaitForSecondsRealtime(duration);
+        facingLocked = false;
+        parryFacingCoroutine = null;
     }
 
     // Called by animation event at the moment of impact (when sword actually hits)
