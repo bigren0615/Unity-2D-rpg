@@ -240,7 +240,10 @@ public class PlayerController : MonoBehaviour
                 Debug.Log($"[VitalView] MATCH — triggering bullet time via '{ec.gameObject.name}'!");
 
                 if (GameManager.Instance != null)
+                {
                     GameManager.Instance.TriggerVitalView();
+                    AudioManager.Instance.PlaySFX(SFXType.Swoosh); // ZZZ-style whoosh cue on perfect dodge
+                }
                 else
                     Debug.LogError("[VitalView] GameManager.Instance is NULL! Ensure a GameManager exists in the scene.");
 

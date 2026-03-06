@@ -1975,6 +1975,13 @@ MonoBehaviour:
     pitchMax: 1.5
     loop: 0
     source: {fileID: 0}
+  - name: Swoosh
+    clip: {fileID: 8300000, guid: 3b93f3d84120b7345bb1a24db00c22e0, type: 3}
+    volume: 0.6
+    pitchMin: 0.95
+    pitchMax: 1.05
+    loop: 0
+    source: {fileID: 0}
   music:
   - name: AmbientBGM
     clip: {fileID: 8300000, guid: 5e5b3ffed146e664ca3995e8dec98f0f, type: 3}

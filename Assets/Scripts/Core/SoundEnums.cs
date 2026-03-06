@@ -20,7 +20,8 @@ public enum SFXType
     Slash2,
     Slash3,
     Punch1,
-    Slice
+    Slice,
+    Swoosh
 }
 
 /// <summary>
