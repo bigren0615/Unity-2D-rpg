@@ -29,16 +29,19 @@ public class GameManager : MonoBehaviour
 
     public bool IsVitalViewActive() => isVitalViewActive;
 
-    // ===== HITSTOP (parry impact freeze) =====
+    // ===== HITSTOP (parry impact camera punch) =====
     private Coroutine hitstopCoroutine;
-    private Canvas hitstopCanvas;
-    private UnityEngine.UI.Image hitstopFlash; // bright white burst on parry impact
+    [Tooltip("Camera zoom factor during parry hitstop. 0.82 = 18% zoom in. Lower = more dramatic.")]
+    public float hitstopZoomFactor = 0.82f;
+    private float hitstopOriginalSize;
 
     /// <summary>
-    /// Parry hitstop: freeze time completely for a brief instant + white impact flash.
-    /// Distinct from Vital View — no slow-motion, just a hard freeze then immediate resume.
+    /// Parry hitstop: ZZZ-style camera punch zoom.
+    ///   Phase 1 (~0.04s real) — Camera snaps in fast (explosive t^0.3 zoom punch)
+    ///   Phase 2 (freezeDuration real) — World freezes (timeScale=0), camera holds zoomed
+    ///   Phase 3 (~0.15s real) — Camera eases back to original size (t^2 smooth pullback)
     /// </summary>
-    public void TriggerHitstop(float freezeDuration = 0.1f)
+    public void TriggerHitstop(float freezeDuration = 0.25f)
     {
         if (isVitalViewActive) return; // Don't stack with bullet time
         if (hitstopCoroutine != null)
@@ -48,56 +51,46 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator HitstopCoroutine(float duration)
     {
+        Camera cam = Camera.main;
+        if (cam == null) { hitstopCoroutine = null; yield break; }
+
+        hitstopOriginalSize = cam.orthographicSize;
+        float targetSize = hitstopOriginalSize * hitstopZoomFactor;
+
+        // ── Phase 1: Snap zoom in (explosive punch, ~0.04s real time) ──
+        const float snapDur = 0.04f;
+        float e = 0f;
+        while (e < snapDur)
+        {
+            e += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(e / snapDur);
+            // t^0.3: rushes to target instantly then barely creeps — explosive snap feel
+            cam.orthographicSize = Mathf.Lerp(hitstopOriginalSize, targetSize, Mathf.Pow(t, 0.3f));
+            yield return null;
+        }
+        cam.orthographicSize = targetSize;
+
+        // ── Phase 2: Freeze — world stops, camera holds at zoomed position ──
         Time.timeScale = 0f;
         Time.fixedDeltaTime = 0f;
-
-        EnsureHitstopOverlay();
-        if (hitstopFlash != null)
-            hitstopFlash.color = new Color(1f, 1f, 1f, 0.65f);
-
         yield return new WaitForSecondsRealtime(duration);
-
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
 
-        // Fade flash out after the freeze lifts
-        if (hitstopFlash != null)
+        // ── Phase 3: Ease zoom back out (~0.15s real time) ──
+        const float easeOutDur = 0.25f;
+        float zoomedSize = cam.orthographicSize;
+        e = 0f;
+        while (e < easeOutDur)
         {
-            float elapsed = 0f;
-            const float fadeDur = 0.12f;
-            while (elapsed < fadeDur)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float a = Mathf.Lerp(0.65f, 0f, elapsed / fadeDur);
-                hitstopFlash.color = new Color(1f, 1f, 1f, a);
-                yield return null;
-            }
-            hitstopFlash.color = new Color(1f, 1f, 1f, 0f);
+            e += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(e / easeOutDur);
+            // t^2 ease-in: starts slow then accelerates — "world breathes back" feeling
+            cam.orthographicSize = Mathf.Lerp(zoomedSize, hitstopOriginalSize, t * t);
+            yield return null;
         }
+        cam.orthographicSize = hitstopOriginalSize;
         hitstopCoroutine = null;
-    }
-
-    private void EnsureHitstopOverlay()
-    {
-        if (hitstopCanvas != null) return;
-
-        GameObject canvasGO = new GameObject("HitstopCanvas");
-        DontDestroyOnLoad(canvasGO);
-        hitstopCanvas = canvasGO.AddComponent<Canvas>();
-        hitstopCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        hitstopCanvas.sortingOrder = 1000; // Above VitalView (999)
-        canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
-
-        GameObject flashGO = new GameObject("Hitstop_Flash");
-        flashGO.transform.SetParent(canvasGO.transform, false);
-        hitstopFlash = flashGO.AddComponent<UnityEngine.UI.Image>();
-        hitstopFlash.raycastTarget = false;
-        hitstopFlash.color = new Color(1f, 1f, 1f, 0f);
-        RectTransform rt = hitstopFlash.rectTransform;
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
     }
 
     /// <summary>

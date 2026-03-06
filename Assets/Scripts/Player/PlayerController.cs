@@ -55,6 +55,9 @@ public class PlayerController : MonoBehaviour
 
     // ---- Parry ----
     private Coroutine parryFacingCoroutine;
+    private Coroutine parryHitstopCoroutine;
+    [Tooltip("Seconds (real-time) after parry input before hitstop+SFX fires. Tune to match the clash frame of your Parry animation. Set to 0 once you wire the ParryImpact animation event.")]
+    [SerializeField] private float parryImpactDelay = 0.1f;
 
     private void Awake()
     {
@@ -331,8 +334,12 @@ public class PlayerController : MonoBehaviour
                     animator.SetFloat("moveY", parryDir.y);
                     animator.SetTrigger("Parry");
 
-                    AudioManager.Instance?.PlaySFX(SFXType.Clash);
-                    GameManager.Instance?.TriggerHitstop();
+                    // Fire SFX + hitstop at the clash impact frame, not at button-press.
+                    // Tune parryImpactDelay in the Inspector to match your Parry animation.
+                    // Once you add a ParryImpact() animation event at the clash frame,
+                    // this coroutine becomes the fallback only.
+                    if (parryHitstopCoroutine != null) StopCoroutine(parryHitstopCoroutine);
+                    parryHitstopCoroutine = StartCoroutine(ParryHitstopCoroutine());
 
                     // Failsafe: release facing lock after 1s real-time in case
                     // ParryEnd animation event is not yet configured
@@ -345,6 +352,17 @@ public class PlayerController : MonoBehaviour
             }
         }
         Debug.Log("[Parry] No parryable window open — whiff.");
+    }
+
+    // Delays hitstop+SFX until the clash impact frame (tunable via parryImpactDelay).
+    // Superseded frame-perfectly once the ParryImpact animation event is wired up.
+    private IEnumerator ParryHitstopCoroutine()
+    {
+        if (parryImpactDelay > 0f)
+            yield return new WaitForSecondsRealtime(parryImpactDelay);
+        AudioManager.Instance?.PlaySFX(SFXType.Clash);
+        GameManager.Instance?.TriggerHitstop();
+        parryHitstopCoroutine = null;
     }
 
     // Called by animation event at the start of the attack animation
@@ -366,6 +384,22 @@ public class PlayerController : MonoBehaviour
     public void AttackEnd()
     {
         facingLocked = false;
+    }
+
+    /// <summary>
+    /// Called by animation event at the clash / sword-contact frame of the Parry animation.
+    /// Cancels the fallback delay coroutine and fires SFX + hitstop immediately (frame-perfect).
+    /// Add this as an Animation Event in the Parry clip at the frame the sword makes contact.
+    /// </summary>
+    public void ParryImpact()
+    {
+        if (parryHitstopCoroutine != null)
+        {
+            StopCoroutine(parryHitstopCoroutine);
+            parryHitstopCoroutine = null;
+        }
+        AudioManager.Instance?.PlaySFX(SFXType.Clash);
+        GameManager.Instance?.TriggerHitstop();
     }
 
     // Called by animation event at the end of the Parry animation
