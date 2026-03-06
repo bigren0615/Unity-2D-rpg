@@ -253,6 +253,11 @@ public class EnemyCombat : MonoBehaviour
     /// </summary>
     private void ReadyAttack()
     {
+        // Capture attack direction now so PlayerController can use it during the dodge window.
+        // ExecuteAttack() also sets this later, but the player may dash before ExecuteAttack fires.
+        if (player != null)
+            attackDirection = (player.transform.position - transform.position).normalized;
+
         // Randomly decide if this attack is parryable (yellow) or just dodgeable (red)
         isParryable = Random.value > 0.5f;
 

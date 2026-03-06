@@ -208,10 +208,13 @@ public class PlayerController : MonoBehaviour
         Vector2 dashDirection = movementInput != Vector2.zero ? movementInput : lastMoveDir;
 
         // ---- SPAWN DASH EFFECT ----
+        // Declared outside the if-block so the VitalView section can update it
+        // if the dodge direction changes after the effect is already spawned.
+        GameObject dashVFX = null;
         if (dashEffectPrefab != null)
         {
             // Instantiate as child so it follows player
-            GameObject dashVFX = Instantiate(dashEffectPrefab, transform.position, Quaternion.identity, transform);
+            dashVFX = Instantiate(dashEffectPrefab, transform.position, Quaternion.identity, transform);
 
             // Offset behind player based on dash direction
             Vector3 offset = -(Vector3)dashDirection * 2f;
@@ -270,10 +273,36 @@ public class PlayerController : MonoBehaviour
                 else
                     Debug.LogError("[VitalView] PlayerHealth component not found on this GameObject!");
 
-                // ZZZ-style backdash: always flee directly away from the attacking enemy
-                Vector2 awayFromEnemy = ((Vector2)transform.position - (Vector2)ec.transform.position).normalized;
-                if (awayFromEnemy == Vector2.zero) awayFromEnemy = -lastMoveDir; // fallback if perfectly overlapping
-                dashDirection = awayFromEnemy;
+                // Enhanced ZZZ-style dodge: escape PERPENDICULAR to the attack's path.
+                // The old "away from enemy center" vector equals the attack direction
+                // (enemy attacks toward the player), so the player was dashing further along
+                // the attack axis — not out of it. Stepping 90° off the axis guarantees
+                // the player exits the attack's forward area.
+                Vector2 attackAxis = ec.GetAttackDirection();
+                if (attackAxis == Vector2.zero)
+                    attackAxis = ((Vector2)transform.position - (Vector2)ec.transform.position).normalized;
+                if (attackAxis == Vector2.zero)
+                    attackAxis = lastMoveDir;
+
+                // Two perpendicular escape options
+                Vector2 perpCCW = new Vector2(-attackAxis.y,  attackAxis.x);  // 90° counter-clockwise
+                Vector2 perpCW  = new Vector2( attackAxis.y, -attackAxis.x);  // 90° clockwise
+
+                // Pick the perpendicular closest to the player's current movement intent
+                Vector2 inputRef = movementInput != Vector2.zero ? movementInput : lastMoveDir;
+                Vector2 escapePerp = Vector2.Dot(inputRef, perpCCW) >= Vector2.Dot(inputRef, perpCW)
+                    ? perpCCW : perpCW;
+
+                // Blend: mostly perpendicular (exits attack path) + slight away-bias (feels like a back-dodge)
+                dashDirection = (escapePerp + attackAxis * 0.5f).normalized;
+
+                // Realign the already-spawned VFX to match the corrected direction
+                if (dashVFX != null)
+                {
+                    dashVFX.transform.localPosition = -(Vector3)dashDirection * 2f;
+                    float vfxAngle = Mathf.Atan2(dashDirection.y, dashDirection.x) * Mathf.Rad2Deg;
+                    dashVFX.transform.rotation = Quaternion.Euler(0, 0, vfxAngle);
+                }
 
                 vitalViewTriggered = true;
                 break; // one trigger per dash
