@@ -233,12 +233,175 @@ public class EnemyCombat : MonoBehaviour
         attackCoroutine = null;
     }
 
+    private GameObject warningIndicator;
+    private Coroutine warningCoroutine;
+
     /// <summary>
     /// Called 1 second before enemy attacks (for dodge system)
     /// </summary>
     private void ReadyAttack()
     {
-        Debug.Log($"{gameObject.name}: Enemy ready to attack!");
+        // Randomly decide if this attack is parryable (yellow) or just dodgeable (red)
+        bool isParryable = Random.value > 0.5f;
+        
+        Debug.Log($"{gameObject.name}: Enemy ready to attack! {(isParryable ? "PARRY (Yellow)" : "DODGE (Red)")}");
+        
+        if (warningCoroutine != null)
+        {
+            StopCoroutine(warningCoroutine);
+        }
+        warningCoroutine = StartCoroutine(ShowWarningIndicator(isParryable, readyAttackWarningTime));
+    }
+
+    private IEnumerator ShowWarningIndicator(bool isParryable, float duration)
+    {
+        if (warningIndicator == null)
+            warningIndicator = BuildGlintIndicator();
+
+        warningIndicator.SetActive(true);
+        SpriteRenderer[] renderers = warningIndicator.GetComponentsInChildren<SpriteRenderer>();
+
+        // ZZZ colors: bright gold for parry, vivid red for dodge
+        Color baseColor = isParryable ? new Color(1f, 0.85f, 0.05f) : new Color(1f, 0.1f, 0.1f);
+
+        // Locate the hot-white core renderer so we can keep it near-white
+        Transform coreTf = warningIndicator.transform.Find("CoreDot");
+        SpriteRenderer coreRenderer = coreTf != null ? coreTf.GetComponent<SpriteRenderer>() : null;
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+
+            // Phase 1 (0–10%): instant burst — SmoothStep snap-in
+            // Phase 2 (10–75%): hold full brightness + micro-shimmer (alive feel)
+            // Phase 3 (75–100%): smooth fade out
+            float scale, alpha;
+            if (t < 0.1f)
+            {
+                float p = t / 0.1f;
+                scale = Mathf.SmoothStep(0f, 1.15f, p);
+                alpha = Mathf.SmoothStep(0f, 1f, p);
+            }
+            else if (t < 0.75f)
+            {
+                scale = 1f + Mathf.Sin(elapsed * 24f) * 0.04f;
+                alpha = 1f;
+            }
+            else
+            {
+                float p = (t - 0.75f) / 0.25f;
+                scale = 1f - p * 0.25f;
+                alpha = Mathf.SmoothStep(1f, 0f, p);
+            }
+
+            warningIndicator.transform.localScale = new Vector3(scale, scale, 1f);
+
+            foreach (var sr in renderers)
+            {
+                // CoreDot stays near-white for a real "hot light source" look
+                Color c = (sr == coreRenderer) ? Color.Lerp(baseColor, Color.white, 0.85f) : baseColor;
+                sr.color = new Color(c.r, c.g, c.b, alpha);
+            }
+
+            yield return null;
+        }
+
+        warningIndicator.SetActive(false);
+    }
+
+    /// <summary>
+    /// Builds the glint indicator hierarchy once. Uses additive blending + soft gradient
+    /// textures so it looks like real emitted light instead of flat sprites.
+    /// </summary>
+    private GameObject BuildGlintIndicator()
+    {
+        GameObject root = new GameObject("AttackWarningIndicator");
+        root.transform.SetParent(transform);
+        root.transform.localRotation = Quaternion.identity;
+
+        // Centered on the enemy body
+        root.transform.localPosition = Vector3.zero;
+
+        // Additive material: sprites ADD color to the scene like emitted light, not render on top
+        Shader addShader = Shader.Find("Sprites/Additive");
+        if (addShader == null) addShader = Shader.Find("Particles/Additive");
+        if (addShader == null) addShader = Shader.Find("Sprites/Default");
+        Material addMat = new Material(addShader);
+
+        Sprite circle = MakeGradientSprite(false); // radial glow
+        Sprite streak = MakeGradientSprite(true);  // horizontal streak with soft tips
+
+        // Outer ambient glow halo
+        AddGlintChild(root, "AmbientGlow", circle, Vector3.zero, Quaternion.identity,           new Vector3(0.6f,  0.6f,  1f), addMat, 98);
+        // Long dominant horizontal light streak (the "blade catching light" spike)
+        AddGlintChild(root, "H_Streak",   streak,  Vector3.zero, Quaternion.identity,           new Vector3(4.5f,  0.09f, 1f), addMat, 100);
+        // Vertical streak — slightly shorter for the asymmetry real lens flares have
+        AddGlintChild(root, "V_Streak",   streak,  Vector3.zero, Quaternion.Euler(0f, 0f, 90f), new Vector3(1.5f,  0.07f, 1f), addMat, 100);
+        // Diagonal sparkle rays
+        AddGlintChild(root, "Diag_A",     streak,  Vector3.zero, Quaternion.Euler(0f, 0f,  45f),new Vector3(0.9f,  0.05f, 1f), addMat, 100);
+        AddGlintChild(root, "Diag_B",     streak,  Vector3.zero, Quaternion.Euler(0f, 0f, -45f),new Vector3(0.9f,  0.05f, 1f), addMat, 100);
+        // Bright hot white core — the saturated point where "light hits"
+        AddGlintChild(root, "CoreDot",    circle,  Vector3.zero, Quaternion.identity,           new Vector3(0.18f, 0.18f, 1f), addMat, 103);
+
+        return root;
+    }
+
+    private void AddGlintChild(GameObject parent, string childName, Sprite sprite,
+        Vector3 localPos, Quaternion localRot, Vector3 localScale, Material mat, int sortOrder)
+    {
+        GameObject go = new GameObject(childName);
+        go.transform.SetParent(parent.transform);
+        go.transform.localPosition = localPos;
+        go.transform.localRotation = localRot;
+        go.transform.localScale    = localScale;
+        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite        = sprite;
+        sr.sharedMaterial = mat;
+        sr.sortingOrder  = sortOrder;
+    }
+
+    /// <summary>
+    /// Generates a soft gradient texture at runtime.
+    /// isStreak=false → radial circle falloff (center bright, edge transparent).
+    /// isStreak=true  → horizontal streak (bright at center-X, fades at tips; tight vertical).
+    /// </summary>
+    private Sprite MakeGradientSprite(bool isStreak)
+    {
+        const int size = 64;
+        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        tex.wrapMode   = TextureWrapMode.Clamp;
+
+        float half = size * 0.5f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float a;
+                if (isStreak)
+                {
+                    // xAlpha: bright at center-X, fades toward tips (controls streak length)
+                    float xT     = Mathf.Abs((x - half) / half);
+                    float xAlpha = Mathf.Pow(Mathf.Clamp01(1f - xT), 1.8f);
+                    // yAlpha: very soft vertical falloff keeps the streak narrow but not hard-edged
+                    float yT     = Mathf.Abs((y - half) / half);
+                    float yAlpha = Mathf.Pow(Mathf.Clamp01(1f - yT), 0.4f);
+                    a = xAlpha * yAlpha;
+                }
+                else
+                {
+                    float dx   = (x - half) / half;
+                    float dy   = (y - half) / half;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    a = Mathf.Pow(Mathf.Clamp01(1f - dist), 1.5f);
+                }
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        }
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
     }
 
     /// <summary>
