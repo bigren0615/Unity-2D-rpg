@@ -259,49 +259,67 @@ public class EnemyCombat : MonoBehaviour
             warningIndicator = BuildGlintIndicator();
 
         warningIndicator.SetActive(true);
+
+        Transform ambient = warningIndicator.transform.Find("AmbientGlow");
+        Transform h = warningIndicator.transform.Find("H_Streak");
+        Transform v = warningIndicator.transform.Find("V_Streak");
+        Transform d1 = warningIndicator.transform.Find("Diag_A");
+        Transform d2 = warningIndicator.transform.Find("Diag_B");
+        Transform core = warningIndicator.transform.Find("CoreDot");
+
         SpriteRenderer[] renderers = warningIndicator.GetComponentsInChildren<SpriteRenderer>();
 
-        // ZZZ colors: bright gold for parry, vivid red for dodge
-        Color baseColor = isParryable ? new Color(1f, 0.85f, 0.05f) : new Color(1f, 0.1f, 0.1f);
-
-        // Locate the hot-white core renderer so we can keep it near-white
-        Transform coreTf = warningIndicator.transform.Find("CoreDot");
-        SpriteRenderer coreRenderer = coreTf != null ? coreTf.GetComponent<SpriteRenderer>() : null;
+        Color baseColor = isParryable
+            ? new Color(1f, 0.85f, 0.05f)
+            : new Color(1f, 0.1f, 0.1f);
 
         float elapsed = 0f;
+
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
 
-            // Phase 1 (0–10%): instant burst — SmoothStep snap-in
-            // Phase 2 (10–75%): hold full brightness + micro-shimmer (alive feel)
-            // Phase 3 (75–100%): smooth fade out
-            float scale, alpha;
-            if (t < 0.1f)
+            // ===== LIGHT CURVE =====
+            float brightness;
+            if (t < 0.25f)
             {
-                float p = t / 0.1f;
-                scale = Mathf.SmoothStep(0f, 1.15f, p);
-                alpha = Mathf.SmoothStep(0f, 1f, p);
+                brightness = Mathf.Pow(t / 0.25f, 0.5f) * 1.6f; // overshoot flash
             }
-            else if (t < 0.75f)
+            else if (t < 0.6f)
             {
-                scale = 1f + Mathf.Sin(elapsed * 24f) * 0.04f;
-                alpha = 1f;
+                brightness = 1.2f;
             }
             else
             {
-                float p = (t - 0.75f) / 0.25f;
-                scale = 1f - p * 0.25f;
-                alpha = Mathf.SmoothStep(1f, 0f, p);
+                brightness = Mathf.Lerp(1.2f, 0f, (t - 0.6f) / 0.4f);
             }
 
-            warningIndicator.transform.localScale = new Vector3(scale, scale, 1f);
+            float alpha = Mathf.Clamp01(brightness);
+
+            // ===== SCALE BURST =====
+            float scale = 1f + Mathf.Sin(t * Mathf.PI) * 0.25f;
+
+            warningIndicator.transform.localScale = new Vector3(scale, scale, 1);
+
+            // ===== LAYER TIMING =====
+            h.localScale = new Vector3(Mathf.Lerp(0.2f, 2.4f, t), 0.09f, 1);
+            v.localScale = new Vector3(Mathf.Lerp(0.2f, 1.5f, t * 0.9f), 0.07f, 1);
+
+            if (t > 0.1f)
+            {
+                float dt = (t - 0.1f) / 0.9f;
+                d1.localScale = new Vector3(Mathf.Lerp(0.1f, 0.9f, dt), 0.05f, 1);
+                d2.localScale = new Vector3(Mathf.Lerp(0.1f, 0.9f, dt), 0.05f, 1);
+            }
+
+            // ===== CORE PULSE =====
+            float corePulse = 1f + Mathf.Sin(t * 30f) * 0.15f;
+            core.localScale = new Vector3(corePulse, corePulse, 1);
 
             foreach (var sr in renderers)
             {
-                // CoreDot stays near-white for a real "hot light source" look
-                Color c = (sr == coreRenderer) ? Color.Lerp(baseColor, Color.white, 0.85f) : baseColor;
+                Color c = baseColor;
                 sr.color = new Color(c.r, c.g, c.b, alpha);
             }
 
@@ -321,8 +339,9 @@ public class EnemyCombat : MonoBehaviour
         root.transform.SetParent(transform);
         root.transform.localRotation = Quaternion.identity;
 
-        // Centered on the enemy body
-        root.transform.localPosition = Vector3.zero;
+        SpriteRenderer enemySr = GetComponent<SpriteRenderer>();
+        float yOff = (enemySr != null && enemySr.sprite != null) ? enemySr.sprite.bounds.extents.y : 0.5f;
+        root.transform.localPosition = new Vector3(0f, yOff + 0.35f, 0f);
 
         // Additive material: sprites ADD color to the scene like emitted light, not render on top
         Shader addShader = Shader.Find("Sprites/Additive");
@@ -336,7 +355,7 @@ public class EnemyCombat : MonoBehaviour
         // Outer ambient glow halo
         AddGlintChild(root, "AmbientGlow", circle, Vector3.zero, Quaternion.identity,           new Vector3(0.6f,  0.6f,  1f), addMat, 98);
         // Long dominant horizontal light streak (the "blade catching light" spike)
-        AddGlintChild(root, "H_Streak",   streak,  Vector3.zero, Quaternion.identity,           new Vector3(4.5f,  0.09f, 1f), addMat, 100);
+        AddGlintChild(root, "H_Streak",   streak,  Vector3.zero, Quaternion.identity,           new Vector3(2.4f,  0.09f, 1f), addMat, 100);
         // Vertical streak — slightly shorter for the asymmetry real lens flares have
         AddGlintChild(root, "V_Streak",   streak,  Vector3.zero, Quaternion.Euler(0f, 0f, 90f), new Vector3(1.5f,  0.07f, 1f), addMat, 100);
         // Diagonal sparkle rays
