@@ -33,6 +33,7 @@
 | Move Right | `D` / `→` |
 | Attack | `Left Mouse Button` / `Z` |
 | Dash / Dodge | `Right Mouse Button` / `Shift` |
+| Parry Attack | `Space` |
 
 ---
 
@@ -55,9 +56,9 @@ Total Completion  ████████████████░░░░  
 
 ---
 
-## 📋 Log
+## 📋 Update Log
 
-### v0.1-Alpha — Initial Release
+### v0.1-Alpha — Initial Release - 6 March 2026
 - Added player character (Skull Knight) with walk, attack, and death animations
 - Physics-driven movement using Rigidbody2D
 - Top-down environment with floor and nature tilesets
