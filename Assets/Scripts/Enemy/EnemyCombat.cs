@@ -340,8 +340,7 @@ public class EnemyCombat : MonoBehaviour
         root.transform.localRotation = Quaternion.identity;
 
         SpriteRenderer enemySr = GetComponent<SpriteRenderer>();
-        float yOff = (enemySr != null && enemySr.sprite != null) ? enemySr.sprite.bounds.extents.y : 0.5f;
-        root.transform.localPosition = new Vector3(0f, yOff + 0.35f, 0f);
+        root.transform.localPosition = Vector3.zero;
 
         // Additive light shader
         Shader addShader = Shader.Find("Sprites/Additive");
