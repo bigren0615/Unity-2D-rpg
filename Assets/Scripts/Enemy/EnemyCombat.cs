@@ -287,36 +287,44 @@ public class EnemyCombat : MonoBehaviour
             float t = elapsed / duration;
 
             // ===== LIGHT CURVE =====
+            // ZZZ style: near-instant flash to peak, sustain, then clean fade
             float brightness;
-            if (t < 0.25f)
-                brightness = Mathf.Pow(t / 0.25f, 0.5f) * 1.6f;
-            else if (t < 0.6f)
-                brightness = 1.2f;
-            else
-                brightness = Mathf.Lerp(1.2f, 0f, (t - 0.6f) / 0.4f);
-
-            float alpha = Mathf.Clamp01(brightness);
+            if (t < 0.08f)          // explosive flash (8% of duration)
+                brightness = Mathf.Lerp(0f, 4.0f, t / 0.08f);
+            else if (t < 0.4f)      // sustain — slowly eases down
+                brightness = Mathf.Lerp(4.0f, 2.5f, (t - 0.08f) / 0.32f);
+            else                    // long clean fade out
+                brightness = Mathf.Lerp(2.5f, 0f, (t - 0.4f) / 0.6f);
 
             // ===== SCALE BURST =====
-            float scale = Mathf.Lerp(0f, 1f + Mathf.Sin(t * Mathf.PI) * 0.25f, 1f);
+            // t^0.3 easing = explosive pop from 0, then slows down
+            float scale = Mathf.Pow(t, 0.3f) * (1f + Mathf.Sin(t * Mathf.PI) * 0.18f);
             warningIndicator.transform.localScale = new Vector3(scale, scale, 1);
 
-            // ===== STREAKS (4-direction cross, symmetric H and V) =====
-            float streakLen = Mathf.Lerp(0.2f, 2.4f, t);
-            if (h) h.localScale = new Vector3(streakLen, 0.09f, 1);
-            if (v) v.localScale = new Vector3(streakLen, 0.09f, 1);
+            // ===== STREAKS (4-direction cross, fast snap ZZZ style) =====
+            // t^0.35 easing = arms snap out instantly, then settle at full length
+            float streakLen = Mathf.Lerp(0.5f, 2.8f, Mathf.Pow(t, 0.35f));
+            float streakWidth = Mathf.Lerp(0.12f, 0.07f, t); // fat at start, thins as it extends
+            if (h) h.localScale = new Vector3(streakLen, streakWidth, 1);
+            if (v) v.localScale = new Vector3(streakLen, streakWidth, 1);
 
             // ===== CORE PULSE =====
             if (core)
             {
-                float corePulse = 1f + Mathf.Sin(t * 30f) * 0.15f;
+                float corePulse = 1f + Mathf.Sin(t * 40f) * 0.2f * (1f - t);
                 core.localScale = new Vector3(corePulse, corePulse, 1);
             }
 
-            // Apply color with alpha
+            // Drive RGB > 1 for additive overdrive — Sprites/Additive blends src_rgb*brightness
+            // into the framebuffer, values > 1 produce HDR glow with bloom post-processing
             foreach (var sr in renderers)
             {
-                if (sr) sr.color = new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+                if (sr) sr.color = new Color(
+                    baseColor.r * brightness,
+                    baseColor.g * brightness,
+                    baseColor.b * brightness,
+                    1f
+                );
             }
 
             yield return null;
@@ -390,8 +398,9 @@ public class EnemyCombat : MonoBehaviour
                 if (isStreak)
                 {
                     float xT = Mathf.Abs((x - half) / half);
-                    // FIX: fade fully to 0 at tips (old formula kept 28% brightness at edges → square look)
-                    float xAlpha = Mathf.Pow(Mathf.Clamp01(1f - xT), 3f);
+                    // Exponent 2f: tips still cleanly fade to 0, but streak body is 2x brighter than 3f
+                    // (at xT=0.5: 0.5^2=0.25 vs old 0.5^3=0.125 — meaningful for ZZZ bright arms)
+                    float xAlpha = Mathf.Pow(Mathf.Clamp01(1f - xT), 2f);
                     float yT = Mathf.Abs((y - half) / half);
                     // FIX: tighter falloff (old power 0.4 was almost flat, making a fat rectangle)
                     float yAlpha = Mathf.Pow(Mathf.Clamp01(1f - yT), 1.5f);
