@@ -1339,6 +1339,9 @@ MonoBehaviour:
   dashDuration: 0.15
   dashCooldown: 0.5
   dashEffectPrefab: {fileID: 334256193741341976, guid: a2d9988b78d3d0b49a7b59adf12df5b4, type: 3}
+  solidLayer:
+    serializedVersion: 2
+    m_Bits: 0
   footstepInterval: 0.5
   attackCooldown: 0.4
   attackRange: 1.5
@@ -1630,7 +1633,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2292ae75db7158449a8382d6c3ddce09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 1000
+  maxHealth: 200
   damageFlashColor: {r: 1, g: 0, b: 0, a: 1}
   flashDuration: 0.1
   flashCount: 2
