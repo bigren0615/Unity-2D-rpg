@@ -7,7 +7,7 @@
 ![Unity](https://img.shields.io/badge/Unity-6-grey?logo=unity&logoColor=white)
 ![C#](https://img.shields.io/badge/C%23-239120?logo=c-sharp&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-In%20Development-orange)
-![Progress](https://img.shields.io/badge/Overall%20Progress-80%25-blue)
+![Progress](https://img.shields.io/badge/Overall%20Progress-85%25-blue)
 
 > **Goal:** Real-time physics-driven top-down action RPG with fluid combat, dodge mechanics, and responsive input.
 
@@ -76,7 +76,7 @@
 ## 📊 Overall Progress
 
 ```
-Total Completion  ████████████████░░░░  80%
+Total Completion  █████████████████░░░  85%
 ```
 
 ---
@@ -85,7 +85,22 @@ Total Completion  ████████████████░░░░  
 
 ## 📋 Update Log
 
-### v0.1-Alpha — Initial Release - 6 March 2026
+<details open>
+<summary>🆕 v0.2.0-Alpha — Parry System Update - 7 March 2026</summary>
+
+- Added parry mechanic (Space) — succeeds only during enemy yellow warning window
+- Enemy attacks now show a warning indicator before striking (yellow = parryable, red = dodge only)
+- Parry triggers hitstop + ZZZ-style camera punch zoom via `GameManager.TriggerHitstop()`
+- Parry spark VFX effect (`ParrySparkEffect.cs`) with streaking sparks, ring flash, and glint stars
+- Parry animations added for player (Down / Left / Up) and goblin parried state (Down / Left / Up)
+- Enemy enters post-parry stagger after a successful parry
+- Added new SFX: Clash (sword-clash), Slice (attack warning), Swoosh (dramatic whoosh)
+
+</details>
+
+<details>
+<summary>v0.1.0-Alpha — Initial Release - 6 March 2026</summary>
+
 - Added player character (Skull Knight) with walk, attack, and death animations
 - Physics-driven movement using Rigidbody2D
 - Top-down environment with floor and nature tilesets
@@ -97,6 +112,8 @@ Total Completion  ████████████████░░░░  
 - Footstep, attack, and dash sound effects
 - Sorting layers configured for proper depth rendering
 - WebGL build deployed to GitHub Pages
+
+</details>
 
 ---
 
@@ -232,6 +249,8 @@ MainScene
 - [x] Attack input (Left Click or Z key)
 - [x] Face-lock during attack animation
 - [x] Movement cancellation during attack (facing locked to attack direction)
+- [x] Parry input (Space) — succeeds only during enemy yellow warning window
+- [x] Face-lock during parry animation
 
 <details>
 <summary>📌 PlayerController.cs (key structure)</summary>
@@ -313,7 +332,7 @@ public class PlayerController : MonoBehaviour
 
 ### ⚔️ Phase 8 — Combat System
 ```
-██████████████░░░░░░░░   65%  🔄 IN PROGRESS
+████████████████████░░   80%  🔄 IN PROGRESS
 ```
 - [x] Attack input (Left Click / Z key)
 - [x] Arc-based hitbox detection (`Physics2D.OverlapCircleAll` + angle check)
@@ -326,8 +345,9 @@ public class PlayerController : MonoBehaviour
 - [x] Attack debug visualization (Gizmos arc)
 - [x] Enemy attack back — `EnemyCombat.cs` deals damage to player via `PlayerHealth.TakeDamage()`
 - [x] Player invincibility frames (brief I-frames after taking damage, configurable duration)
+- [x] Parry system (Space) — counter during enemy yellow warning window
+- [x] Hitstop (freeze frames + ZZZ-style camera punch zoom) — via `GameManager.TriggerHitstop()`
 - [ ] Knockback on enemy hit
-- [ ] Hitstop (freeze frames)
 - [ ] Dodge I-frames during dash
 - [ ] Combo system
 
@@ -437,6 +457,29 @@ public class PlayerController : MonoBehaviour
 
 ---
 
+### 🥊 Phase 10.8 — Parry System (Zenless Zone Zero Style)
+```
+██████████████████████  100%  ✅ COMPLETE
+```
+- [x] Parry input (Space) — succeeds only during enemy's yellow warning window
+- [x] Enemy attack warning indicator — yellow (parryable) or red (dodge only), shown before each attack
+- [x] `EnemyCombat.TryParry()` — validates timing window and transitions enemy to stagger
+- [x] `EnemyCombat.IsParryable()` / `IsInReadyWindow()` — public API for player detection
+- [x] Post-parry enemy stagger state (blocks movement + attack, configurable duration)
+- [x] Directional parry facing — player faces toward enemy when parrying
+- [x] Parry animation events: `ParryImpact()` (clash frame) and `ParryEnd()` (animation end)
+- [x] Hitstop via `GameManager.TriggerHitstop()` — ZZZ-style camera punch zoom on parry impact
+- [x] `ParrySparkEffect.cs` — procedural ZZZ-style weapon clash sparkle (no prefab needed)
+  - Three-layer VFX: streaking sparks (28 burst) + ring flash bloom + glint stars (6 burst)
+  - `useUnscaledTime = true` — visible during hitstop (timeScale = 0)
+  - Sorts above player sprite on the Effects layer
+- [x] Parry SFX: `SFXType.Clash` (sword-clash impact)
+- [x] Warning indicator SFX: `SFXType.Slice` (pre-attack signal)
+- [x] Player parry animations: `Player_ParryDown.anim`, `Player_ParryLeft.anim`, `Player_ParryUp.anim`
+- [x] Enemy parried animations: `Goblin_ParriedDown.anim`, `Goblin_ParriedLeft.anim`, `Goblin_ParriedUp.anim`
+
+---
+
 <a id="core-feature-status"></a>
 
 ## ⚔️ Core Feature Status
@@ -461,7 +504,7 @@ public class PlayerController : MonoBehaviour
 
 ### 🎬 Animation
 ```
-███████████████████░░░   85%  🔄 IN PROGRESS
+█████████████████████░   92%  🔄 IN PROGRESS
 ```
 | Animation | Status |
 |---|:---:|
@@ -474,6 +517,8 @@ public class PlayerController : MonoBehaviour
 | Goblin Attack Down / Left / Up | ✅ |
 | Goblin Dead Down / Left / Up | ✅ |
 | Emotion bubbles (! and ?) | ✅ |
+| Player Parry Down / Left / Up | ✅ |
+| Goblin Parried Down / Left / Up | ✅ |
 | Dodge / Roll player animation | ❌ |
 | Player Hit / Hurt animation | ❌ |
 | Player Death animation | ❌ |
@@ -482,7 +527,7 @@ public class PlayerController : MonoBehaviour
 
 ### ⚔️ Combat
 ```
-██████████████░░░░░░░░   65%  🔄 IN PROGRESS
+████████████████████░░   80%  🔄 IN PROGRESS
 ```
 | Feature | Status |
 |---|:---:|
@@ -497,7 +542,9 @@ public class PlayerController : MonoBehaviour
 | Player HP system + damage flash | ✅ |
 | Player invincibility frames (after hit) | ✅ |
 | Floating damage numbers (ZZZ style) | ✅ |
-| Hitstop (freeze frames) | ❌ |
+| Enemy attack warning indicator (yellow/red) | ✅ |
+| Parry system (Space, during yellow window) | ✅ |
+| Hitstop (freeze frames + camera punch zoom) | ✅ |
 | Knockback on enemy | ❌ |
 | Dodge I-frames during dash | ⏳ (dash done, I-frames pending) |
 | Combo system | ❌ |
@@ -541,6 +588,8 @@ public class PlayerController : MonoBehaviour
 | Question bubble prefab (?) | ✅ |
 | `PlayerHealth` singleton (HP, invincibility, death) | ✅ |
 | `DamageTextManager` singleton (pooled damage numbers) | ✅ |
+| `GameManager.TriggerHitstop()` (freeze frames + camera zoom) | ✅ |
+| `ParrySparkEffect` (procedural clash VFX, no prefab needed) | ✅ |
 
 ---
 
@@ -563,7 +612,7 @@ public class PlayerController : MonoBehaviour
 
 ### 🔊 Sound Effects & Music
 ```
-█████████████████░░░░░   80%  🔄 IN PROGRESS
+███████████████████░░░   88%  🔄 IN PROGRESS
 ```
 | Feature | Status |
 |---|:---:|
@@ -573,6 +622,8 @@ public class PlayerController : MonoBehaviour
 | Slash / Impact SFX (×3) | ✅ |
 | Enemy spotted SFX (suspense) | ✅ |
 | Player hit / take-damage SFX (`Punch1`) | ✅ |
+| Enemy attack warning SFX (`Slice`) | ✅ |
+| Parry clash SFX (`Clash`) | ✅ |
 | Ambient background music | ✅ |
 | Battle background music | ✅ |
 | Dynamic music crossfade (ambient ↔ battle) | ✅ |
@@ -586,7 +637,7 @@ public class PlayerController : MonoBehaviour
 
 | Phase | Feature | Priority |
 |---|---|:---:|
-| **Phase 11** | Combat Polish (knockback, hitstop, dodge I-frames) | 🔴 High |
+| **Phase 11** | Combat Polish (knockback, dodge I-frames, combo system) | 🔴 High |
 | **Phase 12** | ~~Enemy Attack Back~~ ✅ → `EnemyCombat.cs` complete | ✅ Done |
 | **Phase 13** | ~~Player HP / Hurt / Death system~~ ✅ → `PlayerHealth.cs` complete | ✅ Done |
 | **Phase 14** | ~~Player HP Bar~~ ✅ → Main Menu, Pause Menu, Game Over screen | 🟠 Medium |
@@ -613,7 +664,10 @@ Assets/
 │   │   ├── Player_walkUp.anim               ✅
 │   │   ├── Player_AttackDown.anim           ✅
 │   │   ├── Player_AttackLeft.anim           ✅
-│   │   └── Player_AttackUp.anim             ✅
+│   │   ├── Player_AttackUp.anim             ✅
+│   │   ├── Player_ParryDown.anim            ✅
+│   │   ├── Player_ParryLeft.anim            ✅
+│   │   └── Player_ParryUp.anim              ✅
 │   └── Goblin/
 │       ├── GoblinAC.controller              ✅
 │       ├── Goblin_WalkDown.anim             ✅
@@ -624,7 +678,10 @@ Assets/
 │       ├── Goblin_AttackUp.anim             ✅
 │       ├── Goblin_DeadDown.anim             ✅
 │       ├── Goblin_DeadLeft.anim             ✅
-│       └── Goblin_DeadUp.anim               ✅
+│       ├── Goblin_DeadUp.anim               ✅
+│       ├── Goblin_ParriedDown.anim          ✅
+│       ├── Goblin_ParriedLeft.anim          ✅
+│       └── Goblin_ParriedUp.anim            ✅
 ├── Effects/
 │   ├── Dash/
 │   │   ├── DashEffect.controller            ✅
@@ -635,15 +692,16 @@ Assets/
 ├── Scripts/
 │   ├── Core/
 │   │   ├── AudioManager.cs                  ✅
-│   │   ├── GameManager.cs                   ✅
+│   │   ├── GameManager.cs                   ✅  (combat state, hitstop camera zoom)
 │   │   └── SoundEnums.cs                    ✅
 │   ├── Enemy/
 │   │   ├── EnemyAI.cs                       ✅  (patrol / chase / search brain)
-│   │   ├── EnemyCombat.cs                   ✅  (close-range combat & player damage)
+│   │   ├── EnemyCombat.cs                   ✅  (close-range combat, parry window, stagger)
 │   │   ├── EnemyController.cs               ✅  (physics movement & sprite facing)
 │   │   └── EnemyHealth.cs                   ✅  (health, damage flash, death)
 │   ├── Player/
-│   │   ├── PlayerController.cs              ✅  (movement, dash, attack input)
+│   │   ├── ParrySparkEffect.cs              ✅  (procedural ZZZ-style clash VFX)
+│   │   ├── PlayerController.cs              ✅  (movement, dash, attack, parry input)
 │   │   └── PlayerHealth.cs                  ✅  (HP, invincibility, death)
 │   └── UI/
 │       ├── BubbleController.cs              ✅
@@ -659,8 +717,14 @@ Assets/
 │   │   ├── priscilasousa-loop-edm-*.mp3     ✅ (Ambient BGM)
 │   │   └── soulfuljamtracks-edm-loop-*.mp3  ✅ (Battle BGM)
 │   └── SFX/
+│       ├── Clash/
+│       │   └── u_fe12rqkbth-sword-clash-*.mp3        ✅ (parry clash SFX)
 │       ├── Slash/
 │       │   └── dragon-studio-*.mp3 (×3)     ✅ (slash/impact SFX)
+│       ├── Slice/
+│       │   └── dragon-studio-sword-slice-*.mp3        ✅ (attack warning SFX)
+│       ├── Swoosh/
+│       │   └── dragon-studio-dramatic-whoosh-*.mp3   ✅ (dramatic whoosh SFX)
 │       ├── freesound_community-rustling-grass-*.mp3  ✅ (×3 footstep clips)
 │       ├── zapsplat_cartoon_fast_whoosh_*.mp3        ✅ (dash SFX)
 │       ├── konpeito_sound-knife_swish03-*.mp3        ✅ (attack swoosh ×1)
@@ -683,9 +747,15 @@ Assets/
 ├── Tiles/
 │   ├── TilesetFloor_0..457.asset            ✅
 │   └── TilesetNature_0..381.asset           ✅
-├── DashEffect.prefab                        ✅
-├── QuestionBubble.prefab                    ✅
-├── SuspenseBubble.prefab                    ✅
+├── Perfab/
+│   ├── Effect/
+│   │   └── DashEffect.prefab                ✅
+│   ├── Enemies/
+│   │   └── EnemyGoblin.prefab               ✅
+│   └── Ui/
+│       ├── DamageText.prefab                ✅
+│       ├── QuestionBubble.prefab            ✅
+│       └── SuspenseBubble.prefab            ✅
 └── MainScene.unity                          ✅
 ```
 
@@ -709,6 +779,9 @@ Assets/
 | Sword Swing SFX (×3) | Various (freesound_community, oxidvideos, konpeito_sound) | *(verify licenses)* | Attack swoosh sound effects |
 | Sword Slash / Slice SFX (×3) | Various (dragon-studio, universfield) via Freesound.org | *(verify licenses)* | Hit / impact sound effects |
 | Stab SFX | brvhrtz via Freesound.org | *(verify license)* | Enemy spotted suspense sound |
+| Sword Slice SFX | dragon-studio via Freesound.org | *(verify license)* | Enemy attack warning indicator sound |
+| Sword Clash SFX | u_fe12rqkbth via Freesound.org | *(verify license)* | Parry clash impact sound |
+| Dramatic Whoosh SFX | dragon-studio via Freesound.org | *(verify license)* | Dramatic swoosh sound |
 | Ambient BGM loop | priscilasousa via Freesound.org | *(verify license)* | Ambient background music |
 | Battle BGM loop | soulfuljamtracks via Freesound.org | *(verify license)* | Battle background music |
 | *(add asset)* | *(add source)* | *(add license)* | *(add usage)* |
